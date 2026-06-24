@@ -17,6 +17,8 @@ export function EditEmployeeForm({ employee, companySchedule, salaryRules }: Edi
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [tab, setTab] = useState<"profile" | "schedule" | "salary">("profile");
+  const [salaryBreakup, setSalaryBreakup] = useState<any>(null);
+  const [breakupLoading, setBreakupLoading] = useState(false);
 
   // Profile form
   const [profile, setProfile] = useState({
@@ -67,12 +69,64 @@ export function EditEmployeeForm({ employee, companySchedule, salaryRules }: Edi
         body: JSON.stringify(profile),
       });
       const data = await res.json();
-      if (data.success) toast.success("Profile updated");
+      if (data.success) {
+        toast.success("Profile updated");
+        router.refresh();
+      }
       else toast.error(data.error || "Failed to update");
     } finally {
       setLoading(false);
     }
   };
+
+  const setEmployeeStatus = async (active: boolean) => {
+    if (!confirm(active ? `Reactivate ${employee.name}?` : `Deactivate ${employee.name}?`)) return;
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/employees/${employee.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isActive: active }),
+      });
+      if (res.ok) {
+        toast.success(active ? "Employee reactivated" : "Employee deactivated");
+        setProfile(p => ({ ...p, isActive: active }));
+        router.refresh();
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const hardDeleteEmployee = async () => {
+    if (!confirm(`Permanently delete ${employee.name}? This action cannot be undone.`)) return;
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/employees/${employee.id}/hard-delete`, { method: "DELETE" });
+      if (res.ok) {
+        toast.success(`Deleted ${employee.name}`);
+        router.push("/admin/employees");
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchSalaryBreakup = async () => {
+    setBreakupLoading(true);
+    try {
+      const res = await fetch(`/api/employees/${employee.id}/salary`);
+      const data = await res.json();
+      if (data.success) setSalaryBreakup(data.data);
+      else toast.error(data.error || "Failed to load salary breakup");
+    } finally {
+      setBreakupLoading(false);
+    }
+  };
+
+  if (tab === "salary" && !salaryBreakup && !breakupLoading) {
+    fetchSalaryBreakup();
+  }
 
   const saveSchedule = async () => {
     setLoading(true);
@@ -181,14 +235,25 @@ export function EditEmployeeForm({ employee, companySchedule, salaryRules }: Edi
               <input className="input" value={profile.phone} onChange={e => setProfile(p => ({ ...p, phone: e.target.value }))} />
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <input type="checkbox" id="isActive" checked={profile.isActive} onChange={e => setProfile(p => ({ ...p, isActive: e.target.checked }))} className="w-4 h-4 rounded border-slate-300 text-blue-600" />
-            <label htmlFor="isActive" className="text-sm text-slate-700">Account active</label>
+          <div className="flex gap-2 border-b border-slate-100 pb-4 mb-4">
+            <button onClick={saveProfile} disabled={loading} className="btn-primary flex-1">
+              {loading ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+              Save Profile
+            </button>
+            {profile.isActive ? (
+              <button onClick={() => setEmployeeStatus(false)} disabled={loading} className="px-4 py-2 bg-amber-50 text-amber-600 hover:bg-amber-100 rounded-lg text-sm font-medium transition-colors">
+                Deactivate
+              </button>
+            ) : (
+              <button onClick={() => setEmployeeStatus(true)} disabled={loading} className="px-4 py-2 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 rounded-lg text-sm font-medium transition-colors">
+                Reactivate
+              </button>
+            )}
+            <button onClick={hardDeleteEmployee} disabled={loading} className="px-4 py-2 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg text-sm font-medium transition-colors inline-flex items-center gap-1.5">
+              <Trash2 size={14} />
+              Delete
+            </button>
           </div>
-          <button onClick={saveProfile} disabled={loading} className="btn-primary">
-            {loading ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-            Save Profile
-          </button>
         </div>
       )}
 
@@ -304,6 +369,75 @@ export function EditEmployeeForm({ employee, companySchedule, salaryRules }: Edi
             {loading ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
             {salary.enabled ? "Save Salary Override" : "Use Company Default"}
           </button>
+
+          {/* Salary Breakup */}
+          <div className="mt-8 border-t border-slate-100 pt-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-medium text-slate-900">Current Month Salary Breakup</h3>
+              <button onClick={fetchSalaryBreakup} className="text-sm text-blue-600 hover:text-blue-700">Refresh</button>
+            </div>
+            
+            {breakupLoading ? (
+              <div className="py-8 text-center text-slate-400 flex items-center justify-center gap-2"><Loader2 size={16} className="animate-spin" /> Loading breakup...</div>
+            ) : salaryBreakup ? (
+              <div className="bg-slate-50 border border-slate-200 rounded-lg overflow-hidden">
+                <table className="w-full text-sm text-left">
+                  <tbody className="divide-y divide-slate-200">
+                    <tr className="bg-white">
+                      <td className="px-4 py-3 font-medium text-slate-700">Base Salary</td>
+                      <td className="px-4 py-3 text-right font-mono text-slate-900">₹{salaryBreakup.baseSalary.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                    </tr>
+                    <tr>
+                      <td className="px-4 py-3 text-slate-600">Total Working Days</td>
+                      <td className="px-4 py-3 text-right font-mono">{salaryBreakup.totalWorkingDays}</td>
+                    </tr>
+                    <tr className="bg-white">
+                      <td className="px-4 py-3 text-slate-600">Per Day Rate</td>
+                      <td className="px-4 py-3 text-right font-mono text-slate-500">₹{salaryBreakup.perDayRate.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                    </tr>
+                    <tr>
+                      <td className="px-4 py-3 text-slate-600">Days Present (Full)</td>
+                      <td className="px-4 py-3 text-right font-mono text-emerald-600">{salaryBreakup.presentFullDays}</td>
+                    </tr>
+                    <tr className="bg-white">
+                      <td className="px-4 py-3 text-slate-600">Days Half</td>
+                      <td className="px-4 py-3 text-right font-mono text-orange-600">{salaryBreakup.halfDays}</td>
+                    </tr>
+                    <tr>
+                      <td className="px-4 py-3 text-slate-600">Days Late</td>
+                      <td className="px-4 py-3 text-right font-mono text-amber-600">{salaryBreakup.lateDays}</td>
+                    </tr>
+                    <tr className="bg-white">
+                      <td className="px-4 py-3 text-slate-600">Late Penalty Deductions (Days)</td>
+                      <td className="px-4 py-3 text-right font-mono text-red-600">-{salaryBreakup.latePenalty}</td>
+                    </tr>
+                    <tr>
+                      <td className="px-4 py-3 text-slate-600">Days Absent</td>
+                      <td className="px-4 py-3 text-right font-mono text-red-600">{salaryBreakup.absentDays}</td>
+                    </tr>
+                    <tr className="bg-white">
+                      <td className="px-4 py-3 text-slate-600">Effective Days Worked</td>
+                      <td className="px-4 py-3 text-right font-mono text-slate-900">{salaryBreakup.daysWorked}</td>
+                    </tr>
+                    <tr>
+                      <td className="px-4 py-3 text-slate-600">Paid Leaves Utilized</td>
+                      <td className="px-4 py-3 text-right font-mono text-blue-600">{salaryBreakup.paidLeavesUtilized} / {salaryBreakup.paidLeavesAllowed}</td>
+                    </tr>
+                    <tr className="bg-white">
+                      <td className="px-4 py-3 font-semibold text-slate-900">Total Payable Days</td>
+                      <td className="px-4 py-3 text-right font-mono font-semibold text-emerald-600">{salaryBreakup.totalPaidDays}</td>
+                    </tr>
+                    <tr className="bg-slate-100">
+                      <td className="px-4 py-4 font-bold text-slate-900 text-base">Net Earned So Far</td>
+                      <td className="px-4 py-4 text-right font-mono font-bold text-emerald-700 text-lg">₹{salaryBreakup.netEarned.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="py-8 text-center text-slate-400">No salary rules configured.</div>
+            )}
+          </div>
         </div>
       )}
     </div>

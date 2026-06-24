@@ -15,6 +15,7 @@ interface StatsCardsProps {
 }
 
 export function StatsCards({ summary }: StatsCardsProps) {
+  const leavesTaken = summary.absentDays + (summary.halfDays * 0.5);
   const cards = [
     {
       label: "Attendance",
@@ -41,12 +42,12 @@ export function StatsCards({ summary }: StatsCardsProps) {
       valueColor: "text-slate-900",
     },
     {
-      label: "Absent",
-      value: summary.absentDays,
-      sub: "Days missed this month",
+      label: "Leaves Taken",
+      value: leavesTaken,
+      sub: "Absent + Half-days (0.5)",
       icon: XCircle,
       color: "text-red-600 bg-red-100",
-      valueColor: summary.absentDays > 0 ? "text-red-600" : "text-slate-900",
+      valueColor: leavesTaken > 0 ? "text-red-600" : "text-slate-900",
     },
     {
       label: "Late",
@@ -56,18 +57,10 @@ export function StatsCards({ summary }: StatsCardsProps) {
       color: "text-amber-600 bg-amber-100",
       valueColor: summary.lateDays > 0 ? "text-amber-600" : "text-slate-900",
     },
-    {
-      label: "Half Days",
-      value: summary.halfDays,
-      sub: "Half-day records",
-      icon: AlertCircle,
-      color: "text-orange-600 bg-orange-100",
-      valueColor: summary.halfDays > 0 ? "text-orange-600" : "text-slate-900",
-    },
   ];
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
       {cards.map((card) => {
         const Icon = card.icon;
         return (

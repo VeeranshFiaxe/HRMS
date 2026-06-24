@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { calculateSalary } from "@/lib/salary-engine";
 import { format, startOfDay, startOfMonth, endOfMonth } from "date-fns";
 import {
   Users, Clock, CheckCircle, XCircle, AlertCircle, TrendingUp, UserCheck
@@ -70,6 +71,11 @@ export default async function AdminDashboardPage() {
     orderBy: { name: "asc" },
   });
 
+  // Total Salary Payable calculation
+  const salaryPromises = allEmployees.map(emp => calculateSalary(emp.id, now.getFullYear(), now.getMonth() + 1));
+  const salaryResults = await Promise.all(salaryPromises);
+  const totalSalaryPayable = salaryResults.reduce((acc, res) => acc + (res.success && res.data ? res.data.netEarned : 0), 0);
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -81,12 +87,13 @@ export default async function AdminDashboardPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         {[
           { label: "Total Employees", value: totalEmployees, icon: Users, color: "text-blue-600 bg-blue-100" },
           { label: "Currently In", value: checkedIn, icon: UserCheck, color: "text-emerald-600 bg-emerald-100" },
           { label: "Absent Today", value: absentToday, icon: XCircle, color: "text-red-600 bg-red-100" },
           { label: "Late Today", value: lateToday, icon: Clock, color: "text-amber-600 bg-amber-100" },
+          { label: "Est. Payroll", value: `₹${totalSalaryPayable.toLocaleString(undefined, { maximumFractionDigits: 0 })}`, icon: TrendingUp, color: "text-purple-600 bg-purple-100" },
         ].map((stat) => {
           const Icon = stat.icon;
           return (
