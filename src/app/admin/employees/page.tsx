@@ -7,6 +7,7 @@ import Link from "next/link";
 import { format } from "date-fns";
 import { Users, Plus, Pencil } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { DeleteEmployeeButton } from "@/components/admin/DeleteEmployeeButton";
 
 export default async function EmployeesPage() {
   const session = await getServerSession(authOptions);
@@ -104,6 +105,7 @@ export default async function EmployeesPage() {
                     <Pencil size={13} />
                     Edit
                   </Link>
+                  <DeleteEmployeeButton id={emp.id} name={emp.name} />
                 </td>
               </tr>
             ))}
