@@ -9,6 +9,7 @@ import { StatsCards } from "@/components/employee/StatsCards";
 import { AttendanceCalendar } from "@/components/attendance/AttendanceCalendar";
 import { RecentAttendance } from "@/components/attendance/RecentAttendance";
 import { format, startOfDay } from "date-fns";
+import { LiveClock } from "@/components/layout/LiveClock";
 
 export default async function DashboardPage() {
   const session = await getServerSession(authOptions);
@@ -58,7 +59,7 @@ export default async function DashboardPage() {
             </p>
           </div>
           <div className="text-left md:text-right text-sm text-slate-500">
-            <p className="font-semibold text-slate-700 text-lg">{format(now, "HH:mm")}</p>
+            <LiveClock />
           </div>
         </div>
       </div>

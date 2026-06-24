@@ -184,11 +184,30 @@ export function calculateAttendancePercentage(
  */
 export function determineAttendanceStatus(
   checkInAt: Date,
-  schedule: { startTime: string; lateAfter: string; halfDayAfter: string }
+  schedule: { startTime: string; lateAfter: string; halfDayAfter: string },
+  clientOffset?: number
 ): { status: "PRESENT" | "LATE" | "HALF_DAY"; isLate: boolean; lateMinutes: number } {
-  const date = startOfDay(checkInAt);
-  const lateAfterDate = timeStrToDate(schedule.lateAfter, date);
-  const halfDayAfterDate = timeStrToDate(schedule.halfDayAfter, date);
+  const offset = clientOffset ?? checkInAt.getTimezoneOffset();
+  const localDate = new Date(checkInAt.getTime() - offset * 60000);
+
+  const parseLocalTime = (timeStr: string) => {
+    const [hours, minutes] = timeStr.split(":").map(Number);
+    const targetLocal = new Date(
+      Date.UTC(
+        localDate.getUTCFullYear(),
+        localDate.getUTCMonth(),
+        localDate.getUTCDate(),
+        hours,
+        minutes,
+        0,
+        0
+      )
+    );
+    return new Date(targetLocal.getTime() + offset * 60000);
+  };
+
+  const lateAfterDate = parseLocalTime(schedule.lateAfter);
+  const halfDayAfterDate = parseLocalTime(schedule.halfDayAfter);
 
   const isLate = checkInAt > lateAfterDate;
   const isHalfDay = checkInAt > halfDayAfterDate;

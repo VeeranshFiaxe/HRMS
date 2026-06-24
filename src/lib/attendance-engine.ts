@@ -18,6 +18,7 @@ export interface CheckInRequest {
   clientIp: string;
   lat?: number;
   lng?: number;
+  clientOffset?: number;
   userAgent?: string;
 }
 
@@ -201,7 +202,7 @@ export async function processCheckIn(req: CheckInRequest): Promise<CheckInResult
     }
 
     // 7. Calculate attendance status
-    const { status, isLate, lateMinutes } = determineAttendanceStatus(now, schedule);
+    const { status, isLate, lateMinutes } = determineAttendanceStatus(now, schedule, req.clientOffset);
 
     // 8. Create or update attendance record (upsert to handle edge cases)
     const record = await prisma.attendanceRecord.upsert({

@@ -87,7 +87,7 @@ export function AttendanceCard({ todayRecord, schedule }: AttendanceCardProps) {
   const handleCheckIn = async () => {
     setLoading(true);
     try {
-      const body: any = {};
+      const body: any = { clientOffset: new Date().getTimezoneOffset() };
       if (coords) {
         body.lat = coords.lat;
         body.lng = coords.lng;
@@ -121,7 +121,7 @@ export function AttendanceCard({ todayRecord, schedule }: AttendanceCardProps) {
   const handleCheckOut = async () => {
     setLoading(true);
     try {
-      const body: any = {};
+      const body: any = { clientOffset: new Date().getTimezoneOffset() };
       if (coords) {
         body.lat = coords.lat;
         body.lng = coords.lng;

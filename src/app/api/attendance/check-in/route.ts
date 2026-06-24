@@ -20,6 +20,7 @@ export async function POST(req: NextRequest) {
       clientIp,
       lat: body.lat,
       lng: body.lng,
+      clientOffset: body.clientOffset,
       userAgent: req.headers.get("user-agent") || undefined,
     });
 
