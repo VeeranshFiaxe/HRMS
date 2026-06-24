@@ -1,6 +1,7 @@
 // src/components/layout/Sidebar.tsx
 "use client";
 
+import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
@@ -22,6 +23,8 @@ import {
   PartyPopper,
   BarChart3,
   UserCircle,
+  Menu,
+  X
 } from "lucide-react";
 
 interface NavItem {
@@ -57,6 +60,7 @@ export function Sidebar({ collapsed = false }: SidebarProps) {
   const pathname = usePathname();
   const { data: session } = useSession();
   const isAdmin = session?.user?.role === "ADMIN";
+  const [isOpen, setIsOpen] = React.useState(false);
 
   const isActive = (href: string) => {
     if (href === "/dashboard" || href === "/admin") {
@@ -65,13 +69,45 @@ export function Sidebar({ collapsed = false }: SidebarProps) {
     return pathname.startsWith(href);
   };
 
+  // Close sidebar on navigation in mobile
+  React.useEffect(() => {
+    setIsOpen(false);
+  }, [pathname]);
+
   return (
-    <aside
-      className={cn(
-        "flex flex-col bg-slate-900 text-white h-screen sticky top-0 overflow-y-auto transition-all duration-300",
-        collapsed ? "w-16" : "w-60"
+    <>
+      {/* Mobile Topbar */}
+      <div className="md:hidden flex items-center justify-between bg-slate-900 text-white p-4 shrink-0">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center">
+            <Building2 size={18} />
+          </div>
+          <div>
+            <p className="font-bold text-sm">CompanyHR</p>
+          </div>
+        </div>
+        <button onClick={() => setIsOpen(!isOpen)} className="p-1 text-slate-300 hover:text-white">
+          {isOpen ? <X size={24} /> : <Menu size={24} />}
+        </button>
+      </div>
+
+      {/* Sidebar overlay for mobile */}
+      {isOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+          onClick={() => setIsOpen(false)}
+        />
       )}
-    >
+
+      {/* Sidebar */}
+      <aside
+        className={cn(
+          "flex flex-col bg-slate-900 text-white overflow-y-auto transition-all duration-300",
+          "fixed md:sticky top-0 bottom-0 left-0 z-50 md:h-screen",
+          isOpen ? "translate-x-0 w-64" : "-translate-x-full md:translate-x-0",
+          collapsed ? "md:w-16" : "md:w-60"
+        )}
+      >
       {/* Logo */}
       <div className="flex items-center gap-3 px-4 py-5 border-b border-slate-800">
         <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -148,6 +184,7 @@ export function Sidebar({ collapsed = false }: SidebarProps) {
         </button>
       </div>
     </aside>
+    </>
   );
 }
 

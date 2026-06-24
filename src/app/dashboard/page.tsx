@@ -47,7 +47,7 @@ export default async function DashboardPage() {
     <div className="space-y-6">
       {/* Header */}
       <div className="page-header">
-        <div className="flex items-start justify-between">
+        <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
           <div>
             <h1 className="page-title">Good {getGreeting()}, {session.user.name.split(" ")[0]}! 👋</h1>
             <p className="page-subtitle">
@@ -57,9 +57,8 @@ export default async function DashboardPage() {
                 : user?.designation || user?.department || "Employee"}
             </p>
           </div>
-          <div className="text-right text-sm text-slate-500">
+          <div className="text-left md:text-right text-sm text-slate-500">
             <p className="font-semibold text-slate-700 text-lg">{format(now, "HH:mm")}</p>
-            <p>Server Time</p>
           </div>
         </div>
       </div>

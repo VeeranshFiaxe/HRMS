@@ -12,6 +12,7 @@ const googleClientId = process.env.GOOGLE_CLIENT_ID?.trim();
 const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET?.trim();
 
 export const authOptions: NextAuthOptions = {
+  secret: process.env.NEXTAUTH_SECRET,
   // @ts-ignore — PrismaAdapter type mismatch between next-auth versions
   adapter: PrismaAdapter(prisma) as any,
   session: {

@@ -70,11 +70,11 @@ export function AttendanceCard({ todayRecord, schedule }: AttendanceCardProps) {
         setGeoStatus("denied");
         setGeoError(
           err.code === 1
-            ? "Location permission denied. Please allow location access in your browser to check in."
-            : "Could not get your location. Please try again."
+            ? "Location permission denied."
+            : "Could not get your location."
         );
       },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+      { enableHighAccuracy: true, timeout: 3000, maximumAge: 60000 }
     );
   }, []);
 
@@ -167,7 +167,7 @@ export function AttendanceCard({ todayRecord, schedule }: AttendanceCardProps) {
             {format(currentTime, "HH:mm:ss")}
           </p>
           <p className="text-sm text-slate-500 mt-0.5">
-            {format(currentTime, "EEEE, MMMM do")} · Server Time
+            {format(currentTime, "EEEE, MMMM do")}
           </p>
 
           {/* Schedule info */}
