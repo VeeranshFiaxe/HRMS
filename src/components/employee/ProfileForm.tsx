@@ -9,8 +9,8 @@ interface Props { user: any; schedule: any; isCustomSchedule: boolean; }
 
 export function ProfileForm({ user, schedule, isCustomSchedule }: Props) {
   const [loading, setLoading] = useState(false);
-  const [tab, setTab] = useState<"profile"|"schedule"|"password">("profile");
-  const [form, setForm] = useState({ name: user.name||"", phone: user.phone||"" });
+  const [tab, setTab] = useState<"profile"|"schedule"|"password"|"preferences">("profile");
+  const [form, setForm] = useState({ name: user.name||"", phone: user.phone||"", timeFormat: user.timeFormat || "24h" });
   const [pwForm, setPwForm] = useState({ current: "", next: "", confirm: "" });
   const [showPw, setShowPw] = useState(false);
 
@@ -20,7 +20,7 @@ export function ProfileForm({ user, schedule, isCustomSchedule }: Props) {
       const res = await fetch(`/api/employees/${user.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: form.name, phone: form.phone }),
+        body: JSON.stringify({ name: form.name, phone: form.phone, timeFormat: form.timeFormat }),
       });
       const data = await res.json();
       if (data.success) toast.success("Profile updated");
@@ -49,7 +49,7 @@ export function ProfileForm({ user, schedule, isCustomSchedule }: Props) {
   return (
     <div className="space-y-4">
       <div className="flex gap-1 bg-slate-100 p-1 rounded-xl w-fit">
-        {(["profile","schedule","password"] as const).map(t => (
+        {(["profile","schedule","password","preferences"] as const).map(t => (
           <button key={t} onClick={() => setTab(t)}
             className={`px-4 py-1.5 rounded-lg text-sm font-medium capitalize transition-colors ${tab===t?"bg-white shadow-sm text-slate-900":"text-slate-500 hover:text-slate-700"}`}>
             {t}
@@ -155,6 +155,37 @@ export function ProfileForm({ user, schedule, isCustomSchedule }: Props) {
           <button onClick={changePassword} disabled={loading || !user.password} className="btn-primary">
             {loading ? <Loader2 size={16} className="animate-spin"/> : null}
             Change Password
+          </button>
+        </div>
+      )}
+
+      {tab === "preferences" && (
+        <div className="card p-6 space-y-4">
+          <div className="flex items-center gap-2 mb-2">
+            <Clock size={16} className="text-blue-500" />
+            <div>
+              <h3 className="font-medium text-slate-900">Display Preferences</h3>
+              <p className="text-xs text-slate-400">Customize how information is shown to you</p>
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="label">Time Format</label>
+              <select 
+                className="input" 
+                value={form.timeFormat} 
+                onChange={e => setForm(f => ({...f, timeFormat: e.target.value}))}
+              >
+                <option value="12h">12-hour (1:00 PM)</option>
+                <option value="24h">24-hour (13:00)</option>
+              </select>
+            </div>
+          </div>
+
+          <button onClick={saveProfile} disabled={loading} className="btn-primary mt-4">
+            {loading ? <Loader2 size={16} className="animate-spin"/> : <Save size={16}/>}
+            Save Preferences
           </button>
         </div>
       )}

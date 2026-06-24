@@ -41,8 +41,12 @@ export default async function DashboardPage() {
   // User info
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { name: true, designation: true, department: true, joiningDate: true },
+    select: { name: true, designation: true, department: true, joiningDate: true, timeFormat: true },
   });
+
+  const officeSettings = await prisma.officeSettings.findFirst();
+  const timezone = officeSettings?.timezone || "Asia/Kolkata";
+  const timeFormat = (user?.timeFormat as "12h" | "24h") || "24h";
 
   return (
     <div className="space-y-6">
@@ -50,7 +54,7 @@ export default async function DashboardPage() {
       <div className="page-header">
         <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
           <div>
-            <h1 className="page-title">Good {getGreeting()}, {session.user.name.split(" ")[0]}! 👋</h1>
+            <h1 className="page-title">Good {getGreeting(timezone)}, {session.user.name.split(" ")[0]}! 👋</h1>
             <p className="page-subtitle">
               {format(now, "EEEE, MMMM do yyyy")} •{" "}
               {user?.designation && user?.department
@@ -59,7 +63,7 @@ export default async function DashboardPage() {
             </p>
           </div>
           <div className="text-left md:text-right text-sm text-slate-500">
-            <LiveClock />
+            <LiveClock timeFormat={timeFormat} timezone={timezone} />
           </div>
         </div>
       </div>
@@ -68,6 +72,8 @@ export default async function DashboardPage() {
       <AttendanceCard
         todayRecord={todayRecord ? JSON.parse(JSON.stringify(todayRecord)) : null}
         schedule={JSON.parse(JSON.stringify(schedule))}
+        timeFormat={timeFormat}
+        timezone={timezone}
       />
 
       {/* Stats */}
@@ -79,15 +85,23 @@ export default async function DashboardPage() {
           records={summary.records.map(r => JSON.parse(JSON.stringify(r)))}
           year={now.getFullYear()}
           month={now.getMonth() + 1}
+          timeFormat={timeFormat}
+          timezone={timezone}
         />
-        <RecentAttendance records={recentRecords.map(r => JSON.parse(JSON.stringify(r)))} />
+        <RecentAttendance 
+          records={recentRecords.map(r => JSON.parse(JSON.stringify(r)))} 
+          timeFormat={timeFormat}
+          timezone={timezone}
+        />
       </div>
     </div>
   );
 }
 
-function getGreeting(): string {
-  const hour = new Date().getHours();
+function getGreeting(timezone: string): string {
+  const { toZonedTime } = require("date-fns-tz");
+  const localDate = toZonedTime(new Date(), timezone);
+  const hour = localDate.getHours();
   if (hour < 12) return "morning";
   if (hour < 17) return "afternoon";
   return "evening";

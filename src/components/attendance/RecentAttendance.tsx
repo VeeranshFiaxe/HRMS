@@ -13,9 +13,11 @@ interface RecentAttendanceProps {
     isLate: boolean;
     lateMinutes: number;
   }>;
+  timeFormat?: "12h" | "24h";
+  timezone?: string;
 }
 
-export function RecentAttendance({ records }: RecentAttendanceProps) {
+export function RecentAttendance({ records, timeFormat = "24h", timezone = "Asia/Kolkata" }: RecentAttendanceProps) {
   if (records.length === 0) {
     return (
       <div className="card p-5">
@@ -35,8 +37,10 @@ export function RecentAttendance({ records }: RecentAttendanceProps) {
       </div>
       <div className="divide-y divide-slate-100 mt-3">
         {records.map((record) => {
-          const checkInTime = record.checkInAt ? format(new Date(record.checkInAt), "HH:mm") : null;
-          const checkOutTime = record.checkOutAt ? format(new Date(record.checkOutAt), "HH:mm") : null;
+          // Add formatTime import above if not present
+          const { formatTime } = require("@/lib/utils");
+          const checkInTime = record.checkInAt ? formatTime(new Date(record.checkInAt), timeFormat, timezone) : null;
+          const checkOutTime = record.checkOutAt ? formatTime(new Date(record.checkOutAt), timeFormat, timezone) : null;
 
           // Duration
           let duration: string | null = null;

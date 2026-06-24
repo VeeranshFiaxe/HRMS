@@ -83,6 +83,7 @@ model User {
   avatar            String?
   joiningDate       DateTime       @default(now())
   isActive          Boolean        @default(true)
+  timeFormat        String         @default("24h")
 
   // OAuth
   googleId          String?        @unique
@@ -262,6 +263,7 @@ model Holiday {
 model OfficeSettings {
   id              String   @id @default(cuid())
   name            String   @default("Main Office")
+  timezone        String   @default("Asia/Kolkata")
 
   // Geofence
   latitude        Float    @default(0)

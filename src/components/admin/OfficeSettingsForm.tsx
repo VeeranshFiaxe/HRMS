@@ -14,6 +14,7 @@ interface Props {
     allowedIps: string[];
     ipCheckEnabled: boolean;
     name: string;
+    timezone?: string;
   } | null;
   rules: {
     lateStreakDays: number;
@@ -29,9 +30,10 @@ export function OfficeSettingsForm({ settings, rules }: Props) {
   const [loading, setLoading] = useState(false);
   const [tab, setTab] = useState<"geofence" | "ip" | "rules">("geofence");
 
-  // Geofence state
+  // Geofence & General state
   const [geo, setGeo] = useState({
     name: settings?.name || "Main Office",
+    timezone: settings?.timezone || "Asia/Kolkata",
     latitude: settings?.latitude?.toString() || "0",
     longitude: settings?.longitude?.toString() || "0",
     radiusMeters: settings?.radiusMeters?.toString() || "200",
@@ -79,6 +81,7 @@ export function OfficeSettingsForm({ settings, rules }: Props) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: geo.name,
+          timezone: geo.timezone,
           latitude: parseFloat(geo.latitude),
           longitude: parseFloat(geo.longitude),
           radiusMeters: parseFloat(geo.radiusMeters),
@@ -155,7 +158,7 @@ export function OfficeSettingsForm({ settings, rules }: Props) {
               tab === t ? "bg-white shadow-sm text-slate-900" : "text-slate-500 hover:text-slate-700"
             }`}
           >
-            {t === "ip" ? "IP Allowlist" : t === "rules" ? "Attendance Rules" : "Geofence"}
+            {t === "ip" ? "IP Allowlist" : t === "rules" ? "Attendance Rules" : "General"}
           </button>
         ))}
       </div>
@@ -165,12 +168,27 @@ export function OfficeSettingsForm({ settings, rules }: Props) {
         <div className="card p-6 space-y-4">
           <div className="flex items-center gap-2 mb-2">
             <MapPin size={18} className="text-blue-500" />
-            <h3 className="font-semibold text-slate-900">Office Geofence</h3>
+            <h3 className="font-semibold text-slate-900">General Settings</h3>
           </div>
 
-          <div>
-            <label className="label">Office Name</label>
-            <input className="input" value={geo.name} onChange={e => setGeo(g => ({ ...g, name: e.target.value }))} />
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="label">Office Name</label>
+              <input className="input" value={geo.name} onChange={e => setGeo(g => ({ ...g, name: e.target.value }))} />
+            </div>
+            <div>
+              <label className="label">Company Timezone</label>
+              <select className="input" value={geo.timezone} onChange={e => setGeo(g => ({ ...g, timezone: e.target.value }))}>
+                <option value="Asia/Kolkata">Asia/Kolkata (IST)</option>
+                <option value="America/New_York">America/New_York (EST/EDT)</option>
+                <option value="America/Los_Angeles">America/Los_Angeles (PST/PDT)</option>
+                <option value="Europe/London">Europe/London (GMT/BST)</option>
+                <option value="Asia/Dubai">Asia/Dubai (GST)</option>
+                <option value="Asia/Singapore">Asia/Singapore (SGT)</option>
+                <option value="Australia/Sydney">Australia/Sydney (AEST/AEDT)</option>
+                <option value="UTC">UTC</option>
+              </select>
+            </div>
           </div>
 
           <div className="flex items-center gap-2">

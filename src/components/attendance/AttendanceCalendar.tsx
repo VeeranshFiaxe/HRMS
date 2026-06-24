@@ -15,6 +15,8 @@ interface AttendanceCalendarProps {
   }>;
   year: number;
   month: number;
+  timeFormat?: "12h" | "24h";
+  timezone?: string;
 }
 
 const STATUS_DOT: Record<string, string> = {
@@ -27,7 +29,7 @@ const STATUS_DOT: Record<string, string> = {
   WEEKEND: "bg-slate-300",
 };
 
-export function AttendanceCalendar({ records, year, month }: AttendanceCalendarProps) {
+export function AttendanceCalendar({ records, year, month, timeFormat = "24h", timezone = "Asia/Kolkata" }: AttendanceCalendarProps) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
   
@@ -45,6 +47,7 @@ export function AttendanceCalendar({ records, year, month }: AttendanceCalendarP
   const [tooltip, setTooltip] = useState<{ record: any; date: Date } | null>(null);
 
   return (
+    <div className="card p-5">
       <div className="flex items-center justify-between mb-4">
         <h3 className="font-semibold text-slate-900">
           {format(viewDate, "MMMM yyyy")}
@@ -119,8 +122,12 @@ export function AttendanceCalendar({ records, year, month }: AttendanceCalendarP
           </p>
           {tooltip.record.checkInAt && (
             <p className="text-slate-500 mt-0.5">
-              In: {format(new Date(tooltip.record.checkInAt), "HH:mm")}
-              {tooltip.record.checkOutAt && ` · Out: ${format(new Date(tooltip.record.checkOutAt), "HH:mm")}`}
+              {(() => {
+                const { formatTime } = require("@/lib/utils");
+                const ci = formatTime(new Date(tooltip.record.checkInAt), timeFormat, timezone);
+                const co = tooltip.record.checkOutAt ? formatTime(new Date(tooltip.record.checkOutAt), timeFormat, timezone) : null;
+                return `In: ${ci}${co ? ` · Out: ${co}` : ""}`;
+              })()}
             </p>
           )}
         </div>

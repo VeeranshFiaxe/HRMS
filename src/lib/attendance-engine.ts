@@ -202,7 +202,8 @@ export async function processCheckIn(req: CheckInRequest): Promise<CheckInResult
     }
 
     // 7. Calculate attendance status
-    const { status, isLate, lateMinutes } = determineAttendanceStatus(now, schedule, req.clientOffset);
+    const timezone = office?.timezone || "Asia/Kolkata";
+    const { status, isLate, lateMinutes } = determineAttendanceStatus(now, schedule, timezone);
 
     // 8. Create or update attendance record (upsert to handle edge cases)
     const record = await prisma.attendanceRecord.upsert({

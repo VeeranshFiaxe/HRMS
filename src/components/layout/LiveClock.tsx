@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { format } from "date-fns";
+import { formatTime } from "@/lib/utils";
 
-export function LiveClock() {
+export function LiveClock({ timeFormat = "24h", timezone = "Asia/Kolkata" }: { timeFormat?: "12h"|"24h", timezone?: string }) {
   const [time, setTime] = useState<Date | null>(null);
 
   useEffect(() => {
@@ -13,5 +13,5 @@ export function LiveClock() {
   }, []);
 
   if (!time) return <p className="font-semibold text-slate-700 text-lg">--:--</p>;
-  return <p className="font-semibold text-slate-700 text-lg">{format(time, "HH:mm")}</p>;
+  return <p className="font-semibold text-slate-700 text-lg">{formatTime(time, timeFormat, timezone)}</p>;
 }

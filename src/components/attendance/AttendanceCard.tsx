@@ -32,11 +32,13 @@ interface AttendanceCardProps {
     endTime: string;
     lateAfter: string;
   };
+  timeFormat?: "12h" | "24h";
+  timezone?: string;
 }
 
 type GeoStatus = "idle" | "fetching" | "granted" | "denied" | "unavailable";
 
-export function AttendanceCard({ todayRecord, schedule }: AttendanceCardProps) {
+export function AttendanceCard({ todayRecord, schedule, timeFormat = "24h", timezone = "Asia/Kolkata" }: AttendanceCardProps) {
   const router = useRouter();
   const [record, setRecord] = useState(todayRecord);
   const [loading, setLoading] = useState(false);
@@ -165,11 +167,11 @@ export function AttendanceCard({ todayRecord, schedule }: AttendanceCardProps) {
           </div>
 
           {/* Live time */}
-          <p className="text-4xl font-bold text-slate-900 font-mono tracking-tight">
-            {mounted ? format(currentTime, "HH:mm:ss") : "--:--:--"}
+          <p className="text-4xl font-bold text-slate-900 font-mono tracking-tight" suppressHydrationWarning>
+            {mounted ? (require("date-fns-tz").formatInTimeZone(currentTime, timezone, timeFormat === "12h" ? "hh:mm:ss a" : "HH:mm:ss")) : "--:--:--"}
           </p>
-          <p className="text-sm text-slate-500 mt-0.5">
-            {mounted ? format(currentTime, "EEEE, MMMM do") : "Loading date..."}
+          <p className="text-sm text-slate-500 mt-0.5" suppressHydrationWarning>
+            {mounted ? (require("date-fns-tz").formatInTimeZone(currentTime, timezone, "EEEE, MMMM do")) : "Loading date..."}
           </p>
 
           {/* Schedule info */}
@@ -243,14 +245,14 @@ export function AttendanceCard({ todayRecord, schedule }: AttendanceCardProps) {
             <div>
               <p className="text-xs text-slate-400 mb-0.5">Check In</p>
               <p className="text-lg font-bold text-slate-900" suppressHydrationWarning>
-                {record?.checkInAt ? format(new Date(record.checkInAt), "HH:mm") : "—"}
+                {record?.checkInAt ? formatTime(new Date(record.checkInAt), timeFormat, timezone) : "—"}
               </p>
             </div>
             <div className="w-px bg-slate-200" />
             <div>
               <p className="text-xs text-slate-400 mb-0.5">Check Out</p>
               <p className="text-lg font-bold text-slate-900" suppressHydrationWarning>
-                {record?.checkOutAt ? format(new Date(record.checkOutAt), "HH:mm") : "—"}
+                {record?.checkOutAt ? formatTime(new Date(record.checkOutAt), timeFormat, timezone) : "—"}
               </p>
             </div>
           </div>

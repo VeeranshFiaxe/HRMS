@@ -19,22 +19,28 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions);
-  if (!session || session.user.role !== "ADMIN") return NextResponse.json({ success: false, error: "Forbidden" }, { status: 403 });
+  if (!session || (session.user.role !== "ADMIN" && session.user.id !== params.id)) {
+    return NextResponse.json({ success: false, error: "Forbidden" }, { status: 403 });
+  }
 
   try {
     const body = await req.json();
-    const { name, role, employmentType, department, designation, phone, isActive } = body;
+    const { name, role, employmentType, department, designation, phone, isActive, timeFormat } = body;
+
+    // Only admins can change certain fields
+    const isAdmin = session.user.role === "ADMIN";
 
     const updated = await prisma.user.update({
       where: { id: params.id },
       data: {
         ...(name !== undefined && { name }),
-        ...(role !== undefined && { role }),
-        ...(employmentType !== undefined && { employmentType }),
-        ...(department !== undefined && { department }),
-        ...(designation !== undefined && { designation }),
         ...(phone !== undefined && { phone }),
-        ...(isActive !== undefined && { isActive }),
+        ...(timeFormat !== undefined && { timeFormat }),
+        ...(isAdmin && role !== undefined && { role }),
+        ...(isAdmin && employmentType !== undefined && { employmentType }),
+        ...(isAdmin && department !== undefined && { department }),
+        ...(isAdmin && designation !== undefined && { designation }),
+        ...(isAdmin && isActive !== undefined && { isActive }),
       },
     });
 
@@ -42,7 +48,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       data: {
         userId: session.user.id,
         action: "EMPLOYEE_UPDATE",
-        description: `Admin updated employee: ${updated.name}`,
+        description: `Profile updated: ${updated.name}`,
         metadata: { targetUserId: params.id, changes: body },
       },
     });

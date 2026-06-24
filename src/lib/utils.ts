@@ -14,6 +14,7 @@ import {
   startOfDay,
   isSameDay,
 } from "date-fns";
+import { formatInTimeZone, toZonedTime, fromZonedTime } from "date-fns-tz";
 
 // ─── Tailwind class merge ──────────────────────────────────────
 
@@ -140,10 +141,12 @@ export function timeStrToDate(timeStr: string, baseDate: Date = new Date()): Dat
 }
 
 /**
- * Format a Date to "HH:mm" string in local time.
+ * Format a Date to string in local time, respecting user preference and timezone.
  */
-export function formatTime(date: Date): string {
-  return format(date, "HH:mm");
+export function formatTime(date: Date | string, timeFormat: "12h" | "24h" = "24h", timezone: string = "Asia/Kolkata"): string {
+  const d = typeof date === "string" ? parseISO(date) : date;
+  const fmt = timeFormat === "12h" ? "hh:mm a" : "HH:mm";
+  return formatInTimeZone(d, timezone, fmt);
 }
 
 /**
@@ -180,30 +183,31 @@ export function calculateAttendancePercentage(
 }
 
 /**
- * Determine attendance status based on check-in time.
+ * Determine attendance status based on check-in time and office timezone.
  */
 export function determineAttendanceStatus(
   checkInAt: Date,
   schedule: { startTime: string; lateAfter: string; halfDayAfter: string },
-  clientOffset?: number
+  timezone: string = "Asia/Kolkata"
 ): { status: "PRESENT" | "LATE" | "HALF_DAY"; isLate: boolean; lateMinutes: number } {
-  const offset = clientOffset ?? checkInAt.getTimezoneOffset();
-  const localDate = new Date(checkInAt.getTime() - offset * 60000);
+  // Get the check-in time represented as a Date object in the office timezone
+  const checkInZoned = toZonedTime(checkInAt, timezone);
 
   const parseLocalTime = (timeStr: string) => {
     const [hours, minutes] = timeStr.split(":").map(Number);
-    const targetLocal = new Date(
-      Date.UTC(
-        localDate.getUTCFullYear(),
-        localDate.getUTCMonth(),
-        localDate.getUTCDate(),
-        hours,
-        minutes,
-        0,
-        0
-      )
+    // Construct a local date with the exact same year/month/date as the checkIn day in that timezone,
+    // but with the schedule hours.
+    const targetZoned = new Date(
+      checkInZoned.getFullYear(),
+      checkInZoned.getMonth(),
+      checkInZoned.getDate(),
+      hours,
+      minutes,
+      0,
+      0
     );
-    return new Date(targetLocal.getTime() + offset * 60000);
+    // Convert this local target time back to a universal UTC Date
+    return fromZonedTime(targetZoned, timezone);
   };
 
   const lateAfterDate = parseLocalTime(schedule.lateAfter);
@@ -266,9 +270,10 @@ export function formatDate(date: Date | string): string {
   return format(d, "dd MMM yyyy");
 }
 
-export function formatDateTime(date: Date | string): string {
+export function formatDateTime(date: Date | string, timeFormat: "12h" | "24h" = "24h", timezone: string = "Asia/Kolkata"): string {
   const d = typeof date === "string" ? parseISO(date) : date;
-  return format(d, "dd MMM yyyy, HH:mm");
+  const fmt = timeFormat === "12h" ? "dd MMM yyyy, hh:mm a" : "dd MMM yyyy, HH:mm";
+  return formatInTimeZone(d, timezone, fmt);
 }
 
 export function formatDuration(minutes: number): string {

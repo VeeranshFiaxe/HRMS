@@ -19,6 +19,12 @@ export default async function AdminDashboardPage() {
   const monthStart = startOfMonth(now);
   const monthEnd = endOfMonth(now);
 
+  const user = await prisma.user.findUnique({ where: { id: session.user.id }, select: { timeFormat: true } });
+  const timeFormat = (user?.timeFormat as "12h" | "24h") || "24h";
+  const officeSettings = await prisma.officeSettings.findFirst();
+  const timezone = officeSettings?.timezone || "Asia/Kolkata";
+  const { formatTime } = require("@/lib/utils");
+
   // Total active employees
   const totalEmployees = await prisma.user.count({
     where: { isActive: true, role: "EMPLOYEE" },
@@ -127,8 +133,8 @@ export default async function AdminDashboardPage() {
                   <div className="flex items-center gap-2 text-right flex-shrink-0">
                     {record?.checkInAt && (
                       <span className="text-xs text-slate-400">
-                        {format(new Date(record.checkInAt), "HH:mm")}
-                        {record.checkOutAt && ` → ${format(new Date(record.checkOutAt), "HH:mm")}`}
+                        {formatTime(new Date(record.checkInAt), timeFormat, timezone)}
+                        {record.checkOutAt && ` → ${formatTime(new Date(record.checkOutAt), timeFormat, timezone)}`}
                       </span>
                     )}
                     <span className={cn("badge text-xs", getStatusColor(record ? status : "ABSENT"))}>
@@ -204,7 +210,7 @@ export default async function AdminDashboardPage() {
               <div className="flex-1 min-w-0">
                 <p className="text-sm text-slate-700 truncate">{log.description}</p>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  {log.user?.name ?? "System"} · {format(new Date(log.createdAt), "MMM do, HH:mm")}
+                  {log.user?.name ?? "System"} · {formatTime(new Date(log.createdAt), timeFormat, timezone)}
                 </p>
               </div>
               <span className="text-xs font-mono text-slate-400 flex-shrink-0">
