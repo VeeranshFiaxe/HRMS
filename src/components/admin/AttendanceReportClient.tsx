@@ -172,13 +172,13 @@ export function AttendanceReportClient({ employees, records, year, month, select
 
                 return (
                   <tr key={record.id}>
-                    <td className="font-medium">{format(new Date(record.date), "dd MMM")}</td>
+                    <td className="font-medium" suppressHydrationWarning>{format(new Date(record.date), "dd MMM")}</td>
                     <td>
                       <p className="font-medium text-slate-900">{record.user.name}</p>
                       <p className="text-xs text-slate-400">{record.user.department}</p>
                     </td>
-                    <td className="font-mono text-sm">{checkIn ? format(checkIn, "HH:mm:ss") : "—"}</td>
-                    <td className="font-mono text-sm">{checkOut ? format(checkOut, "HH:mm:ss") : "—"}</td>
+                    <td className="font-mono text-sm" suppressHydrationWarning>{checkIn ? format(checkIn, "HH:mm:ss") : "—"}</td>
+                    <td className="font-mono text-sm" suppressHydrationWarning>{checkOut ? format(checkOut, "HH:mm:ss") : "—"}</td>
                     <td className="text-slate-500">{duration}</td>
                     <td>
                       <span className={cn("badge", getStatusColor(record.status))}>

@@ -88,7 +88,7 @@ export function HolidayManager({ holidays: initial }: Props) {
                 </div>
                 <div className="flex-1">
                   <p className="text-sm font-medium text-slate-900">{h.name}</p>
-                  <p className="text-xs text-slate-400">
+                  <p className="text-xs text-slate-400" suppressHydrationWarning>
                     {format(new Date(h.date), "EEEE, MMMM do yyyy")}
                     {h.isOptional && <span className="ml-2 text-blue-500">Optional</span>}
                   </p>

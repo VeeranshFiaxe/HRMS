@@ -66,7 +66,7 @@ export function ProfileForm({ user, schedule, isCustomSchedule }: Props) {
             <div>
               <p className="font-semibold text-slate-900 text-lg">{user.name}</p>
               <p className="text-slate-500 text-sm">{user.email}</p>
-              <p className="text-slate-400 text-xs mt-0.5">
+              <p className="text-slate-400 text-xs mt-0.5" suppressHydrationWarning>
                 {user.designation} · {user.department} · Joined {format(new Date(user.joiningDate), "MMM yyyy")}
               </p>
             </div>

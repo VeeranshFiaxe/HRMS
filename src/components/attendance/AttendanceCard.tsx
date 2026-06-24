@@ -242,14 +242,14 @@ export function AttendanceCard({ todayRecord, schedule }: AttendanceCardProps) {
           <div className="flex gap-6 text-center">
             <div>
               <p className="text-xs text-slate-400 mb-0.5">Check In</p>
-              <p className="text-lg font-bold text-slate-900">
+              <p className="text-lg font-bold text-slate-900" suppressHydrationWarning>
                 {record?.checkInAt ? format(new Date(record.checkInAt), "HH:mm") : "—"}
               </p>
             </div>
             <div className="w-px bg-slate-200" />
             <div>
               <p className="text-xs text-slate-400 mb-0.5">Check Out</p>
-              <p className="text-lg font-bold text-slate-900">
+              <p className="text-lg font-bold text-slate-900" suppressHydrationWarning>
                 {record?.checkOutAt ? format(new Date(record.checkOutAt), "HH:mm") : "—"}
               </p>
             </div>

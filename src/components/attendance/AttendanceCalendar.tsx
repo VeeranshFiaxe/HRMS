@@ -1,7 +1,7 @@
 // src/components/attendance/AttendanceCalendar.tsx
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, startOfWeek, endOfWeek, isSameMonth, isToday, isSameDay } from "date-fns";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn, getStatusColor } from "@/lib/utils";
@@ -28,6 +28,9 @@ const STATUS_DOT: Record<string, string> = {
 };
 
 export function AttendanceCalendar({ records, year, month }: AttendanceCalendarProps) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  
   const [viewDate, setViewDate] = useState(new Date(year, month - 1, 1));
 
   const monthStart = startOfMonth(viewDate);
@@ -42,7 +45,6 @@ export function AttendanceCalendar({ records, year, month }: AttendanceCalendarP
   const [tooltip, setTooltip] = useState<{ record: any; date: Date } | null>(null);
 
   return (
-    <div className="card p-5">
       <div className="flex items-center justify-between mb-4">
         <h3 className="font-semibold text-slate-900">
           {format(viewDate, "MMMM yyyy")}
@@ -77,7 +79,7 @@ export function AttendanceCalendar({ records, year, month }: AttendanceCalendarP
         {days.map((day) => {
           const record = getRecord(day);
           const inMonth = isSameMonth(day, viewDate);
-          const today = isToday(day);
+          const today = mounted ? isToday(day) : false;
 
           return (
             <div
