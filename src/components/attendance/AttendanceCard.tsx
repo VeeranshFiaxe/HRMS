@@ -44,9 +44,11 @@ export function AttendanceCard({ todayRecord, schedule }: AttendanceCardProps) {
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [geoError, setGeoError] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [mounted, setMounted] = useState(false);
 
   // Live clock
   useEffect(() => {
+    setMounted(true);
     const t = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(t);
   }, []);
@@ -164,10 +166,10 @@ export function AttendanceCard({ todayRecord, schedule }: AttendanceCardProps) {
 
           {/* Live time */}
           <p className="text-4xl font-bold text-slate-900 font-mono tracking-tight">
-            {format(currentTime, "HH:mm:ss")}
+            {mounted ? format(currentTime, "HH:mm:ss") : "--:--:--"}
           </p>
           <p className="text-sm text-slate-500 mt-0.5">
-            {format(currentTime, "EEEE, MMMM do")}
+            {mounted ? format(currentTime, "EEEE, MMMM do") : "Loading date..."}
           </p>
 
           {/* Schedule info */}
