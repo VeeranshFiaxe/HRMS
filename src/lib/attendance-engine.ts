@@ -56,28 +56,20 @@ export interface CheckOutResult {
 // ─── Effective schedule ────────────────────────────────────────
 
 export async function getEffectiveSchedule(userId: string) {
-  // Prefer employee-specific schedule, fall back to company default
+  // Prefer employee-specific schedule
   const custom = await prisma.employeeSchedule.findUnique({ where: { userId } });
   if (custom) return custom;
+  
+  // Next check specific assigned schedule
+  const user = await prisma.user.findUnique({ where: { id: userId }, include: { companySchedule: true }});
+  if (user?.companySchedule) return user.companySchedule;
 
-  const company = await prisma.companySchedule.findFirst();
-  if (!company) {
-    // Absolute fallback
-    return {
-      startTime: "11:00",
-      endTime: "20:00",
-      lateAfter: "11:15",
-      halfDayAfter: "14:00",
-      monday: true,
-      tuesday: true,
-      wednesday: true,
-      thursday: true,
-      friday: true,
-      saturday: false,
-      sunday: false,
-    };
-  }
-  return company;
+  // Fall back to global default
+  const defaultSchedule = await prisma.companySchedule.findFirst({ where: { isDefault: true }});
+  if (defaultSchedule) return defaultSchedule;
+
+  // Ultimate fallback just in case no default is set
+  return prisma.companySchedule.findFirst();
 }
 
 // ─── Holiday check ─────────────────────────────────────────────

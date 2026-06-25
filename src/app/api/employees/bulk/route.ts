@@ -45,7 +45,14 @@ export async function POST(req: NextRequest) {
         break;
 
       case "CHANGE_SCHEDULE":
-        // Delete any custom EmployeeSchedule overrides to revert to company default
+        if (!payload || !payload.scheduleId) {
+           return NextResponse.json({ success: false, error: "Schedule ID is required" }, { status: 400 });
+        }
+        await prisma.user.updateMany({
+           where: { id: { in: employeeIds } },
+           data: { companyScheduleId: payload.scheduleId === "default" ? null : payload.scheduleId }
+        });
+        // Delete any custom EmployeeSchedule overrides to revert to assigned schedule
         await prisma.employeeSchedule.deleteMany({
            where: { userId: { in: employeeIds } }
         });
@@ -53,7 +60,14 @@ export async function POST(req: NextRequest) {
         break;
 
       case "CHANGE_SALARY_RULE":
-        // Delete SalaryRuleOverrides to revert to company default
+        if (!payload || !payload.salaryRuleId) {
+           return NextResponse.json({ success: false, error: "Salary Rule ID is required" }, { status: 400 });
+        }
+        await prisma.user.updateMany({
+           where: { id: { in: employeeIds } },
+           data: { salaryRulesId: payload.salaryRuleId === "default" ? null : payload.salaryRuleId }
+        });
+        // Delete SalaryRuleOverrides to revert to assigned rule
         await prisma.salaryRuleOverride.deleteMany({
            where: { userId: { in: employeeIds } }
         });

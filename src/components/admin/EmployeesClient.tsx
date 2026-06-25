@@ -448,6 +448,7 @@ export function EmployeesClient({ initialEmployees, schedules = [], salaryRules 
                <p className="text-sm text-slate-500 mb-4">Select a schedule to apply to {selectedIds.length} employees.</p>
                <select className="input mb-6" value={selectedScheduleId} onChange={e => setSelectedScheduleId(e.target.value)}>
                   <option value="" disabled>Select a schedule...</option>
+                  <option value="default">-- Global Default Schedule --</option>
                   {schedules.map(s => <option key={s.id} value={s.id}>{s.name || "Default Company Schedule"}</option>)}
                </select>
                <div className="flex justify-end gap-3">
@@ -465,7 +466,8 @@ export function EmployeesClient({ initialEmployees, schedules = [], salaryRules 
                <p className="text-sm text-slate-500 mb-4">Select a salary rule to apply to {selectedIds.length} employees.</p>
                <select className="input mb-6" value={selectedSalaryRuleId} onChange={e => setSelectedSalaryRuleId(e.target.value)}>
                   <option value="" disabled>Select a rule...</option>
-                  {salaryRules.map(s => <option key={s.id} value={s.id}>{s.note || "Default Salary Rule"}</option>)}
+                  <option value="default">-- Global Default Salary Rule --</option>
+                  {salaryRules.map(s => <option key={s.id} value={s.id}>{s.name || "Default Salary Rule"}</option>)}
                </select>
                <div className="flex justify-end gap-3">
                   <button onClick={() => setShowSalaryModal(false)} className="btn-secondary">Cancel</button>

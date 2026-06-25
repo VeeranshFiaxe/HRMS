@@ -8,15 +8,17 @@ export async function calculateSalary(userId: string, year: number, month: numbe
   // 2. Fetch User & Rules
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    include: { salaryRuleOverride: true },
+    include: { salaryRuleOverride: true, salaryRules: true },
   });
-  const defaultRules = await prisma.salaryRules.findFirst();
+  const globalDefaultRules = await prisma.salaryRules.findFirst({ where: { isDefault: true } });
+  const fallbackRules = await prisma.salaryRules.findFirst();
 
   if (!user) throw new Error("User not found");
 
   // Determine Effective Rules
   const override = user.salaryRuleOverride;
-  const baseSalary = override?.baseSalary || defaultRules?.baseSalary || 0;
+  const effectiveRules = override || user.salaryRules || globalDefaultRules || fallbackRules;
+  const baseSalary = override?.baseSalary || effectiveRules?.baseSalary || 0;
   
   if (!baseSalary) {
     return {
@@ -25,7 +27,7 @@ export async function calculateSalary(userId: string, year: number, month: numbe
     };
   }
 
-  const paidLeaveDaysPerMonth = override?.paidLeaveDaysPerMonth ?? defaultRules?.paidLeaveDaysPerMonth ?? 0;
+  const paidLeaveDaysPerMonth = override?.paidLeaveDaysPerMonth ?? effectiveRules?.paidLeaveDaysPerMonth ?? 0;
 
   // 3. Calculation logic as defined by user:
   // Days Worked: full day = +1, half day = +0.5, three late days = +3-0.5

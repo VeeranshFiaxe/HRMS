@@ -9,11 +9,11 @@ import toast from "react-hot-toast";
 
 interface EditEmployeeFormProps {
   employee: any;
-  companySchedule: any;
-  salaryRules: any;
+  schedules: any[];
+  salaryRulesList: any[];
 }
 
-export function EditEmployeeForm({ employee, companySchedule, salaryRules }: EditEmployeeFormProps) {
+export function EditEmployeeForm({ employee, schedules, salaryRulesList }: EditEmployeeFormProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [tab, setTab] = useState<"profile" | "schedule" | "salary">("profile");
@@ -34,9 +34,10 @@ export function EditEmployeeForm({ employee, companySchedule, salaryRules }: Edi
   // Schedule form — use custom if exists, else company defaults
   const sched = employee.customSchedule || companySchedule || {};
   const [schedule, setSchedule] = useState({
+    assignedId: employee.companyScheduleId || "default", // "default" means global default fallback
     enabled: !!employee.customSchedule,
-    startTime: sched.startTime || "11:00",
-    endTime: sched.endTime || "20:00",
+    startTime: employee.customSchedule?.startTime || "09:00",
+    endTime: employee.customSchedule?.endTime || "18:00",
     lateAfter: sched.lateAfter || "11:15",
     halfDayAfter: sched.halfDayAfter || "14:00",
     monday: sched.monday ?? true,
@@ -52,8 +53,9 @@ export function EditEmployeeForm({ employee, companySchedule, salaryRules }: Edi
   // Salary form
   const so = employee.salaryRuleOverride || {};
   const [salary, setSalary] = useState({
+    assignedId: employee.salaryRulesId || "default",
     enabled: !!employee.salaryRuleOverride,
-    baseSalary: so.baseSalary?.toString() || "",
+    baseSalary: employee.salaryRuleOverride?.baseSalary?.toString() || "",
     halfDayDeductionFactor: so.halfDayDeductionFactor?.toString() || (salaryRules?.halfDayDeductionFactor?.toString() || "0.5"),
     absentDeductionFactor: so.absentDeductionFactor?.toString() || (salaryRules?.absentDeductionFactor?.toString() || "1"),
     paidLeaveDaysPerMonth: so.paidLeaveDaysPerMonth?.toString() || (salaryRules?.paidLeaveDaysPerMonth?.toString() || "1"),
@@ -64,9 +66,13 @@ export function EditEmployeeForm({ employee, companySchedule, salaryRules }: Edi
     setLoading(true);
     try {
       const res = await fetch(`/api/employees/${employee.id}`, {
-        method: "PATCH",
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(profile),
+        body: JSON.stringify({
+          ...profile,
+          companyScheduleId: schedule.assignedId === "default" ? null : schedule.assignedId,
+          salaryRulesId: salary.assignedId === "default" ? null : salary.assignedId
+        }),
       });
       const data = await res.json();
       if (data.success) {
@@ -262,8 +268,30 @@ export function EditEmployeeForm({ employee, companySchedule, salaryRules }: Edi
         <div className="card p-6 space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="font-medium text-slate-900">Custom Schedule</h3>
-              <p className="text-sm text-slate-500">Override the company-wide default schedule</p>
+              <h3 className="font-medium text-slate-900">Assigned Schedule</h3>
+              <p className="text-sm text-slate-500">Choose a company schedule, or create a custom override.</p>
+            </div>
+          </div>
+          
+          <div>
+            <label className="label">Company Schedule</label>
+            <select 
+              className="input mb-4" 
+              value={schedule.assignedId} 
+              onChange={e => setSchedule(s => ({ ...s, assignedId: e.target.value }))}
+              disabled={schedule.enabled}
+            >
+              <option value="default">-- Global Default Schedule --</option>
+              {schedules.map((s: any) => (
+                <option key={s.id} value={s.id}>{s.name} {s.isDefault ? "(Default)" : ""}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex items-center justify-between border-t border-slate-100 pt-4">
+            <div>
+              <h4 className="font-medium text-slate-900 text-sm">Custom Override</h4>
+              <p className="text-xs text-slate-500">Enable this to ignore assigned schedule and specify exact hours.</p>
             </div>
             <label className="relative inline-flex items-center cursor-pointer">
               <input type="checkbox" checked={schedule.enabled} onChange={e => setSchedule(s => ({ ...s, enabled: e.target.checked }))} className="sr-only peer" />
@@ -316,9 +344,9 @@ export function EditEmployeeForm({ employee, companySchedule, salaryRules }: Edi
             </>
           )}
 
-          <button onClick={saveSchedule} disabled={loading} className="btn-primary">
+          <button onClick={saveSchedule} disabled={loading} className="btn-primary w-full justify-center">
             {loading ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-            {schedule.enabled ? "Save Custom Schedule" : "Revert to Company Default"}
+            {schedule.enabled ? "Save Custom Override" : "Save Selected Schedule Assignment"}
           </button>
         </div>
       )}
@@ -328,8 +356,30 @@ export function EditEmployeeForm({ employee, companySchedule, salaryRules }: Edi
         <div className="card p-6 space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="font-medium text-slate-900">Salary Override</h3>
-              <p className="text-sm text-slate-500">Override company-wide salary rules for this employee</p>
+              <h3 className="font-medium text-slate-900">Assigned Salary Rule</h3>
+              <p className="text-sm text-slate-500">Choose a salary formula, or create a custom override.</p>
+            </div>
+          </div>
+
+          <div>
+            <label className="label">Salary Rule</label>
+            <select 
+              className="input mb-4" 
+              value={salary.assignedId} 
+              onChange={e => setSalary(s => ({ ...s, assignedId: e.target.value }))}
+              disabled={salary.enabled}
+            >
+              <option value="default">-- Global Default Salary Rule --</option>
+              {salaryRulesList.map((r: any) => (
+                <option key={r.id} value={r.id}>{r.name} {r.isDefault ? "(Default)" : ""} - ₹{r.baseSalary}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex items-center justify-between border-t border-slate-100 pt-4">
+            <div>
+              <h4 className="font-medium text-slate-900 text-sm">Custom Override</h4>
+              <p className="text-xs text-slate-500">Enable this to ignore assigned rules and define custom pay.</p>
             </div>
             <label className="relative inline-flex items-center cursor-pointer">
               <input type="checkbox" checked={salary.enabled} onChange={e => setSalary(s => ({ ...s, enabled: e.target.checked }))} className="sr-only peer" />
@@ -342,7 +392,7 @@ export function EditEmployeeForm({ employee, companySchedule, salaryRules }: Edi
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="label">Base Salary (₹/month)</label>
-                  <input type="number" className="input" placeholder={`Default: ₹${salaryRules?.baseSalary || 0}`} value={salary.baseSalary} onChange={e => setSalary(s => ({ ...s, baseSalary: e.target.value }))} />
+                  <input type="number" className="input" placeholder="e.g. 50000" value={salary.baseSalary} onChange={e => setSalary(s => ({ ...s, baseSalary: e.target.value }))} />
                 </div>
                 <div>
                   <label className="label">Paid Leave Days/Month</label>
@@ -365,9 +415,9 @@ export function EditEmployeeForm({ employee, companySchedule, salaryRules }: Edi
             </>
           )}
 
-          <button onClick={saveSalary} disabled={loading} className="btn-primary">
+          <button onClick={saveSalary} disabled={loading} className="btn-primary w-full justify-center">
             {loading ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-            {salary.enabled ? "Save Salary Override" : "Use Company Default"}
+            {salary.enabled ? "Save Custom Override" : "Save Selected Rule Assignment"}
           </button>
 
           {/* Salary Breakup */}

@@ -8,28 +8,36 @@ export async function GET() {
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
 
-  const schedule = await prisma.companySchedule.findFirst();
-  return NextResponse.json({ success: true, data: schedule });
+  const schedules = await prisma.companySchedule.findMany({
+    orderBy: { createdAt: 'asc' }
+  });
+  return NextResponse.json({ success: true, data: schedules });
 }
 
-export async function PUT(req: NextRequest) {
+export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session || session.user.role !== "ADMIN") return NextResponse.json({ success: false, error: "Forbidden" }, { status: 403 });
 
   try {
     const body = await req.json();
-    const existing = await prisma.companySchedule.findFirst();
+    
+    // If setting as default, unset others first
+    if (body.isDefault) {
+      await prisma.companySchedule.updateMany({
+        where: { isDefault: true },
+        data: { isDefault: false }
+      });
+    }
 
-    const schedule = existing
-      ? await prisma.companySchedule.update({ where: { id: existing.id }, data: body })
-      : await prisma.companySchedule.create({ data: { id: "default", ...body } });
+    const schedule = await prisma.companySchedule.create({ data: body });
 
     await prisma.auditLog.create({
-      data: { userId: session.user.id, action: "SCHEDULE_UPDATE", description: "Company schedule updated", metadata: body },
+      data: { userId: session.user.id, action: "SCHEDULE_UPDATE", description: `Created new schedule: ${schedule.name}`, metadata: body },
     });
 
     return NextResponse.json({ success: true, data: schedule });
   } catch (error) {
+    console.error(error);
     return NextResponse.json({ success: false, error: "Internal error" }, { status: 500 });
   }
 }

@@ -19,14 +19,14 @@ export default async function EditEmployeePage({ params }: { params: { id: strin
 
   if (!employee) notFound();
 
-  const companySchedule = await prisma.companySchedule.findFirst();
-  const salaryRules = await prisma.salaryRules.findFirst();
+  const schedules = await prisma.companySchedule.findMany({ orderBy: { createdAt: 'asc' } });
+  const salaryRulesList = await prisma.salaryRules.findMany({ orderBy: { createdAt: 'asc' } });
 
   return (
     <EditEmployeeForm
       employee={JSON.parse(JSON.stringify(employee))}
-      companySchedule={JSON.parse(JSON.stringify(companySchedule))}
-      salaryRules={JSON.parse(JSON.stringify(salaryRules))}
+      schedules={JSON.parse(JSON.stringify(schedules))}
+      salaryRulesList={JSON.parse(JSON.stringify(salaryRulesList))}
     />
   );
 }
