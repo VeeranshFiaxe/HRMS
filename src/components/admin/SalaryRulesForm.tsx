@@ -9,6 +9,7 @@ interface Props { rules: any | null; }
 export function SalaryRulesForm({ rules }: Props) {
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
+    baseSalary: rules?.baseSalary?.toString() || "0",
     halfDayDeductionFactor: rules?.halfDayDeductionFactor?.toString() || "0.5",
     lateDeductionPerDay: rules?.lateDeductionPerDay?.toString() || "0",
     absentDeductionFactor: rules?.absentDeductionFactor?.toString() || "1",
@@ -23,6 +24,7 @@ export function SalaryRulesForm({ rules }: Props) {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          baseSalary: parseFloat(form.baseSalary),
           halfDayDeductionFactor: parseFloat(form.halfDayDeductionFactor),
           lateDeductionPerDay: parseFloat(form.lateDeductionPerDay),
           absentDeductionFactor: parseFloat(form.absentDeductionFactor),
@@ -37,11 +39,11 @@ export function SalaryRulesForm({ rules }: Props) {
   };
 
   // Example calculation preview
-  const baseSalary = 50000;
+  const baseSalaryPreview = parseFloat(form.baseSalary) || 0;
   const payableDays = 26;
-  const perDay = baseSalary / payableDays;
+  const perDay = baseSalaryPreview / payableDays;
   const exampleDeduction = (1 * parseFloat(form.absentDeductionFactor) + 1 * parseFloat(form.halfDayDeductionFactor)) * perDay;
-  const exampleNet = baseSalary - exampleDeduction;
+  const exampleNet = baseSalaryPreview - exampleDeduction;
 
   return (
     <div className="space-y-4">
@@ -57,6 +59,12 @@ export function SalaryRulesForm({ rules }: Props) {
         </div>
 
         <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="label">Default Base Salary (₹/month)</label>
+            <input type="number" min="0" className="input" value={form.baseSalary}
+              onChange={e => setForm(f => ({ ...f, baseSalary: e.target.value }))} />
+            <p className="text-xs text-slate-400 mt-1">Company-wide default base salary</p>
+          </div>
           <div>
             <label className="label">Absent Deduction Factor</label>
             <input type="number" step="0.1" min="0" max="2" className="input" value={form.absentDeductionFactor}
@@ -103,10 +111,10 @@ export function SalaryRulesForm({ rules }: Props) {
           <h3 className="font-semibold text-slate-900 text-sm">Example Calculation Preview</h3>
         </div>
         <p className="text-xs text-slate-500 mb-3">
-          For an employee with ₹50,000 base salary, 26 payable working days, 1 absent day, and 1 half-day:
+          For an employee with ₹{baseSalaryPreview.toLocaleString()} base salary, 26 payable working days, 1 absent day, and 1 half-day:
         </p>
         <div className="bg-slate-50 rounded-lg p-4 text-sm space-y-1 font-mono">
-          <p>Base Salary: <span className="text-slate-900 font-semibold">₹{baseSalary.toLocaleString()}</span></p>
+          <p>Base Salary: <span className="text-slate-900 font-semibold">₹{baseSalaryPreview.toLocaleString()}</span></p>
           <p>Per Day Rate: <span className="text-slate-900">₹{perDay.toFixed(2)}</span></p>
           <p>Absent Deduction (1 day × {form.absentDeductionFactor}): <span className="text-red-600">-₹{(1 * parseFloat(form.absentDeductionFactor) * perDay).toFixed(2)}</span></p>
           <p>Half-Day Deduction (1 × {form.halfDayDeductionFactor}): <span className="text-orange-600">-₹{(1 * parseFloat(form.halfDayDeductionFactor) * perDay).toFixed(2)}</span></p>

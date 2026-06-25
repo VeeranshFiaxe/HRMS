@@ -16,7 +16,7 @@ export async function calculateSalary(userId: string, year: number, month: numbe
 
   // Determine Effective Rules
   const override = user.salaryRuleOverride;
-  const baseSalary = override?.baseSalary || 0;
+  const baseSalary = override?.baseSalary || defaultRules?.baseSalary || 0;
   
   if (!baseSalary) {
     return {

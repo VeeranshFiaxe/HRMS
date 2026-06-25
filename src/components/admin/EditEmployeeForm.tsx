@@ -342,7 +342,7 @@ export function EditEmployeeForm({ employee, companySchedule, salaryRules }: Edi
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="label">Base Salary (₹/month)</label>
-                  <input type="number" className="input" placeholder="50000" value={salary.baseSalary} onChange={e => setSalary(s => ({ ...s, baseSalary: e.target.value }))} />
+                  <input type="number" className="input" placeholder={`Default: ₹${salaryRules?.baseSalary || 0}`} value={salary.baseSalary} onChange={e => setSalary(s => ({ ...s, baseSalary: e.target.value }))} />
                 </div>
                 <div>
                   <label className="label">Paid Leave Days/Month</label>
