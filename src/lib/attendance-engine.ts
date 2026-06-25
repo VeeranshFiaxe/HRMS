@@ -306,7 +306,22 @@ export async function processCheckOut(req: CheckOutRequest): Promise<CheckOutRes
       };
     }
 
-    // 4. Update record with check-out time
+    // 4. Calculate duration and check for daily hour requirement
+    const durationMs = now.getTime() - record.checkInAt.getTime();
+    const durationHours = durationMs / (1000 * 60 * 60);
+
+    let newStatus = record.status;
+    let newIsHalfDay = record.isHalfDay;
+    let newOverrideNote = record.overrideNote;
+
+    if (durationHours < 3.5) {
+      newStatus = "ABSENT";
+      newIsHalfDay = false;
+      const noteStr = "Daily hour requirement not fulfilled";
+      newOverrideNote = newOverrideNote ? `${newOverrideNote} | ${noteStr}` : noteStr;
+    }
+
+    // 5. Update record with check-out time
     const updated = await prisma.attendanceRecord.update({
       where: { id: record.id },
       data: {
@@ -316,10 +331,13 @@ export async function processCheckOut(req: CheckOutRequest): Promise<CheckOutRes
         checkOutLng: req.lng ?? null,
         checkOutIpValid: !office?.ipCheckEnabled || isIpAllowed(req.clientIp, office.allowedIps as string[]),
         checkOutGeoValid: req.lat != null ? true : null,
+        status: newStatus,
+        isHalfDay: newIsHalfDay,
+        overrideNote: newOverrideNote,
       },
     });
 
-    // 5. Audit log
+    // 6. Audit log
     await createAuditLog(req.userId, "CHECK_OUT", `Check-out at ${format(now, "HH:mm:ss")}`, {
       recordId: record.id,
       checkOutAt: now.toISOString(),

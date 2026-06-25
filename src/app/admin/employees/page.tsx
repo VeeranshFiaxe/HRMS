@@ -23,12 +23,19 @@ export default async function EmployeesPage() {
     },
   });
 
-  const typeColors: Record<string, string> = {
-    FULL_TIME: "text-emerald-700 bg-emerald-50",
-    PART_TIME: "text-blue-700 bg-blue-50",
-    INTERN: "text-purple-700 bg-purple-50",
-    CONTRACT: "text-orange-700 bg-orange-50",
-  };
+  const schedules = await prisma.companySchedule.findMany({
+    orderBy: { createdAt: "desc" }
+  });
 
-  return <EmployeesClient initialEmployees={JSON.parse(JSON.stringify(employees))} />;
+  const salaryRules = await prisma.salaryRules.findMany({
+    orderBy: { createdAt: "desc" }
+  });
+
+  return (
+    <EmployeesClient 
+      initialEmployees={JSON.parse(JSON.stringify(employees))} 
+      schedules={JSON.parse(JSON.stringify(schedules))}
+      salaryRules={JSON.parse(JSON.stringify(salaryRules))}
+    />
+  );
 }

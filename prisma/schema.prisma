@@ -315,6 +315,9 @@ model AttendanceRules {
 model SalaryRules {
   id                      String   @id @default(cuid())
 
+  // Default Base Salary
+  baseSalary              Float    @default(0)
+
   // Formula: baseSalary * (daysWorked / payableWorkingDays)
   // Deductions for late / half day
   halfDayDeductionFactor  Float    @default(0.5)   // half day = 0.5 day deducted
