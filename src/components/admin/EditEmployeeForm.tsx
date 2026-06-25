@@ -32,7 +32,8 @@ export function EditEmployeeForm({ employee, schedules, salaryRulesList }: EditE
   });
 
   // Schedule form — use custom if exists, else company defaults
-  const sched = employee.customSchedule || companySchedule || {};
+  const defaultSchedule = schedules.find(s => s.isDefault) || schedules[0] || {};
+  const sched = employee.customSchedule || schedules.find((s: any) => s.id === employee.companyScheduleId) || defaultSchedule;
   const [schedule, setSchedule] = useState({
     assignedId: employee.companyScheduleId || "default", // "default" means global default fallback
     enabled: !!employee.customSchedule,
@@ -51,14 +52,16 @@ export function EditEmployeeForm({ employee, schedules, salaryRulesList }: EditE
   });
 
   // Salary form
+  const defaultRule = salaryRulesList.find(r => r.isDefault) || salaryRulesList[0] || {};
+  const rule = salaryRulesList.find((r: any) => r.id === employee.salaryRulesId) || defaultRule;
   const so = employee.salaryRuleOverride || {};
   const [salary, setSalary] = useState({
     assignedId: employee.salaryRulesId || "default",
     enabled: !!employee.salaryRuleOverride,
     baseSalary: employee.salaryRuleOverride?.baseSalary?.toString() || "",
-    halfDayDeductionFactor: so.halfDayDeductionFactor?.toString() || (salaryRules?.halfDayDeductionFactor?.toString() || "0.5"),
-    absentDeductionFactor: so.absentDeductionFactor?.toString() || (salaryRules?.absentDeductionFactor?.toString() || "1"),
-    paidLeaveDaysPerMonth: so.paidLeaveDaysPerMonth?.toString() || (salaryRules?.paidLeaveDaysPerMonth?.toString() || "1"),
+    halfDayDeductionFactor: so.halfDayDeductionFactor?.toString() || (rule?.halfDayDeductionFactor?.toString() || "0.5"),
+    absentDeductionFactor: so.absentDeductionFactor?.toString() || (rule?.absentDeductionFactor?.toString() || "1"),
+    paidLeaveDaysPerMonth: so.paidLeaveDaysPerMonth?.toString() || (rule?.paidLeaveDaysPerMonth?.toString() || "1"),
     note: so.note || "",
   });
 

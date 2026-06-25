@@ -159,6 +159,14 @@ export async function processCheckIn(req: CheckInRequest): Promise<CheckInResult
     // 4. Schedule validation
     const schedule = await getEffectiveSchedule(req.userId);
 
+    if (!schedule) {
+      return {
+        success: false,
+        error: "No company schedule is configured.",
+        errorCode: "INTERNAL_ERROR",
+      };
+    }
+
     // Check if today is a working day
     if (!isWorkingDay(now, schedule)) {
       // Still allow admin override later, but record the attempt
@@ -404,7 +412,16 @@ export async function getAttendanceSummary(userId: string, year: number, month: 
     orderBy: { date: "asc" },
   });
 
-  const schedule = await getEffectiveSchedule(userId);
+  const dbSchedule = await getEffectiveSchedule(userId);
+  const schedule = dbSchedule || {
+    monday: true,
+    tuesday: true,
+    wednesday: true,
+    thursday: true,
+    friday: true,
+    saturday: false,
+    sunday: false,
+  } as any;
   const holidays = await prisma.holiday.findMany({
     where: { date: { gte: start, lte: end } },
   });
