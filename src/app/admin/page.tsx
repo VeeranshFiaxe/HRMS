@@ -6,10 +6,43 @@ import { prisma } from "@/lib/prisma";
 import { calculateSalary } from "@/lib/salary-engine";
 import { format, startOfDay, startOfMonth, endOfMonth } from "date-fns";
 import {
-  Users, Clock, CheckCircle, XCircle, AlertCircle, TrendingUp, UserCheck
+  Users, Clock, XCircle, TrendingUp, UserCheck,
+  Megaphone, Bell, Plus, Cake, Trophy, ChevronRight
 } from "lucide-react";
 import Link from "next/link";
 import { cn, getStatusColor, getStatusLabel } from "@/lib/utils";
+
+export const dynamic = "force-dynamic";
+
+// Helper: employees with birthday today
+function getTodayBirthdays(
+  employees: Array<{ id: string; name: string; designation: string | null; department: string | null; dateOfBirth: Date | null }>
+) {
+  const today = new Date();
+  return employees.filter((e) => {
+    if (!e.dateOfBirth) return false;
+    const dob = new Date(e.dateOfBirth);
+    return dob.getMonth() === today.getMonth() && dob.getDate() === today.getDate();
+  });
+}
+
+// Helper: employees with work anniversary today
+function getTodayAnniversaries(
+  employees: Array<{ id: string; name: string; designation: string | null; department: string | null; joiningDate: Date }>
+) {
+  const today = new Date();
+  return employees
+    .filter((e) => {
+      const doj = new Date(e.joiningDate);
+      const sameDay = doj.getMonth() === today.getMonth() && doj.getDate() === today.getDate();
+      const years = today.getFullYear() - doj.getFullYear();
+      return sameDay && years > 0;
+    })
+    .map((e) => ({
+      ...e,
+      years: today.getFullYear() - new Date(e.joiningDate).getFullYear(),
+    }));
+}
 
 export default async function AdminDashboardPage() {
   const session = await getServerSession(authOptions);
@@ -59,7 +92,7 @@ export default async function AdminDashboardPage() {
 
   const statusMap = Object.fromEntries(monthRecords.map((r) => [r.status, r._count.status]));
 
-  // All employees with today's status
+  // All employees with today's status (includes dateOfBirth for birthday check)
   const allEmployees = await prisma.user.findMany({
     where: { isActive: true, role: "EMPLOYEE" },
     include: {
@@ -76,36 +109,204 @@ export default async function AdminDashboardPage() {
   const salaryResults = await Promise.all(salaryPromises);
   const totalSalaryPayable = salaryResults.reduce((acc, res) => acc + (res.success && res.data ? res.data.netEarned : 0), 0);
 
+  // Announcements — latest 3
+  const announcements = await prisma.announcement.findMany({
+    where: { isActive: true },
+    include: { createdBy: { select: { name: true } } },
+    orderBy: { createdAt: "desc" },
+    take: 3,
+  });
+
+  // Birthday & anniversary data (pass dateOfBirth from allEmployees)
+  const employeeBasicData = allEmployees.map((e) => ({
+    id: e.id,
+    name: e.name,
+    designation: e.designation,
+    department: e.department,
+    dateOfBirth: e.dateOfBirth,
+    joiningDate: e.joiningDate,
+  }));
+  const birthdays = getTodayBirthdays(employeeBasicData as any);
+  const anniversaries = getTodayAnniversaries(employeeBasicData as any);
+
+  // Inbox — pending count for badge
+  const pendingInbox = await prisma.inboxItem.count({ where: { status: "PENDING" } });
+
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="page-header">
-        <h1 className="page-title">Admin Dashboard</h1>
-        <p className="page-subtitle">
-          {format(now, "EEEE, MMMM do yyyy")} · Overview
-        </p>
+      <div className="page-header flex items-start justify-between gap-4">
+        <div>
+          <h1 className="page-title">Admin Dashboard</h1>
+          <p className="page-subtitle">
+            {format(now, "EEEE, MMMM do yyyy")} · Overview
+          </p>
+        </div>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <Link
+            href="/admin/announcements"
+            className="btn-secondary text-sm"
+          >
+            <Megaphone size={15} />
+            Make Announcement
+          </Link>
+          <Link href="/admin/inbox" className="btn-secondary text-sm relative">
+            <Bell size={15} />
+            Inbox
+            {pendingInbox > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-500 text-white text-[10px] rounded-full flex items-center justify-center font-bold">
+                {pendingInbox}
+              </span>
+            )}
+          </Link>
+        </div>
       </div>
 
-      {/* Stats */}
+      {/* Clickable Stats */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         {[
-          { label: "Total Employees", value: totalEmployees, icon: Users, color: "text-blue-600 bg-blue-100" },
-          { label: "Currently In", value: checkedIn, icon: UserCheck, color: "text-emerald-600 bg-emerald-100" },
-          { label: "Absent Today", value: absentToday, icon: XCircle, color: "text-red-600 bg-red-100" },
-          { label: "Late Today", value: lateToday, icon: Clock, color: "text-amber-600 bg-amber-100" },
-          { label: "Est. Payroll", value: `₹${totalSalaryPayable.toLocaleString(undefined, { maximumFractionDigits: 0 })}`, icon: TrendingUp, color: "text-purple-600 bg-purple-100" },
+          {
+            label: "Total Employees",
+            value: totalEmployees,
+            icon: Users,
+            color: "text-blue-600 bg-blue-100",
+            href: "/admin/employees",
+          },
+          {
+            label: "Currently In",
+            value: checkedIn,
+            icon: UserCheck,
+            color: "text-emerald-600 bg-emerald-100",
+            href: `/admin/attendance?status=checked_in&year=${now.getFullYear()}&month=${now.getMonth() + 1}`,
+          },
+          {
+            label: "Absent Today",
+            value: absentToday,
+            icon: XCircle,
+            color: "text-red-600 bg-red-100",
+            href: `/admin/attendance?status=ABSENT&year=${now.getFullYear()}&month=${now.getMonth() + 1}`,
+          },
+          {
+            label: "Late Today",
+            value: lateToday,
+            icon: Clock,
+            color: "text-amber-600 bg-amber-100",
+            href: `/admin/attendance?status=LATE&year=${now.getFullYear()}&month=${now.getMonth() + 1}`,
+          },
+          {
+            label: "Est. Payroll",
+            value: `₹${totalSalaryPayable.toLocaleString(undefined, { maximumFractionDigits: 0 })}`,
+            icon: TrendingUp,
+            color: "text-purple-600 bg-purple-100",
+            href: "/admin/salary",
+          },
         ].map((stat) => {
           const Icon = stat.icon;
           return (
-            <div key={stat.label} className="stat-card">
+            <Link
+              key={stat.label}
+              href={stat.href}
+              className="stat-card hover:shadow-md hover:border-slate-300 transition-all cursor-pointer group"
+            >
               <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center mb-3", stat.color)}>
                 <Icon size={20} />
               </div>
               <p className="text-3xl font-bold text-slate-900">{stat.value}</p>
-              <p className="text-sm text-slate-500">{stat.label}</p>
-            </div>
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-slate-500">{stat.label}</p>
+                <ChevronRight size={14} className="text-slate-300 group-hover:text-slate-500 transition-colors" />
+              </div>
+            </Link>
           );
         })}
+      </div>
+
+      {/* Announcements Widget */}
+      <div className="card overflow-hidden">
+        <div className="p-5 border-b border-slate-100 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Megaphone size={16} className="text-blue-500" />
+            <h2 className="font-semibold text-slate-900">Announcements</h2>
+          </div>
+          <div className="flex items-center gap-2">
+            <Link
+              href="/admin/announcements"
+              className="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1"
+            >
+              View all →
+            </Link>
+          </div>
+        </div>
+
+        {/* Birthday / Anniversary rows */}
+        {(birthdays.length > 0 || anniversaries.length > 0) && (
+          <div className="divide-y divide-slate-100">
+            {birthdays.map((emp) => (
+              <Link
+                key={`bday-${emp.id}`}
+                href={`/admin/employees/${emp.id}`}
+                className="px-5 py-3 flex items-center gap-3 hover:bg-pink-50/50 transition-colors"
+              >
+                <div className="w-8 h-8 rounded-full bg-pink-100 flex items-center justify-center flex-shrink-0">
+                  <Cake size={15} className="text-pink-500" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-slate-900 truncate">🎂 {emp.name}</p>
+                  <p className="text-xs text-slate-400">Birthday today</p>
+                </div>
+                <span className="badge text-pink-600 bg-pink-50 text-xs flex-shrink-0">Birthday</span>
+              </Link>
+            ))}
+            {anniversaries.map((emp) => (
+              <Link
+                key={`ann-${emp.id}`}
+                href={`/admin/employees/${emp.id}`}
+                className="px-5 py-3 flex items-center gap-3 hover:bg-amber-50/50 transition-colors"
+              >
+                <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
+                  <Trophy size={15} className="text-amber-500" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-slate-900 truncate">🎉 {emp.name}</p>
+                  <p className="text-xs text-slate-400">{emp.years} year{emp.years !== 1 ? "s" : ""} work anniversary</p>
+                </div>
+                <span className="badge text-amber-600 bg-amber-50 text-xs flex-shrink-0">Anniversary</span>
+              </Link>
+            ))}
+          </div>
+        )}
+
+        {/* Recent announcements */}
+        {announcements.length === 0 && birthdays.length === 0 && anniversaries.length === 0 ? (
+          <div className="px-5 py-8 text-center">
+            <p className="text-sm text-slate-400">No announcements yet.</p>
+            <Link href="/admin/announcements" className="btn-primary mt-3 text-xs py-1.5 px-3 inline-flex">
+              <Plus size={13} />
+              Make Announcement
+            </Link>
+          </div>
+        ) : announcements.length > 0 ? (
+          <div className="divide-y divide-slate-100">
+            {announcements.map((ann) => (
+              <Link
+                key={ann.id}
+                href="/admin/announcements"
+                className="px-5 py-3 flex items-start gap-3 hover:bg-slate-50 transition-colors group"
+              >
+                <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <Megaphone size={14} className="text-blue-600" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-slate-900 truncate">{ann.title}</p>
+                  <p className="text-xs text-slate-400 mt-0.5 line-clamp-1">{ann.content}</p>
+                </div>
+                <span className="text-xs text-slate-400 flex-shrink-0 mt-0.5">
+                  {format(new Date(ann.createdAt), "dd MMM")}
+                </span>
+              </Link>
+            ))}
+          </div>
+        ) : null}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -127,12 +328,16 @@ export default async function AdminDashboardPage() {
               const isCheckedIn = record?.checkInAt && !record?.checkOutAt;
 
               return (
-                <div key={emp.id} className="px-5 py-3 flex items-center gap-3">
+                <Link
+                  key={emp.id}
+                  href={`/admin/employees/${emp.id}`}
+                  className="px-5 py-3 flex items-center gap-3 hover:bg-slate-50 transition-colors group"
+                >
                   <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-sm font-bold flex-shrink-0">
                     {emp.name[0]}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-slate-900 truncate">{emp.name}</p>
+                    <p className="text-sm font-medium text-slate-900 truncate group-hover:text-blue-600 transition-colors">{emp.name}</p>
                     <p className="text-xs text-slate-400 truncate">
                       {emp.designation} · {emp.department}
                     </p>
@@ -148,7 +353,7 @@ export default async function AdminDashboardPage() {
                       {isCheckedIn ? "In Office" : getStatusLabel(record ? status : "ABSENT")}
                     </span>
                   </div>
-                </div>
+                </Link>
               );
             })}
           </div>
@@ -182,9 +387,10 @@ export default async function AdminDashboardPage() {
             <div className="space-y-2">
               {[
                 { href: "/admin/employees/new", label: "Add Employee" },
+                { href: "/admin/announcements", label: "Make Announcement" },
                 { href: "/admin/holidays", label: "Manage Holidays" },
                 { href: "/admin/office", label: "Office Settings" },
-                { href: "/admin/attendance?export=true", label: "Export Report" },
+                { href: `/admin/attendance?export=true&year=${now.getFullYear()}&month=${now.getMonth() + 1}`, label: "Export Report" },
               ].map((link) => (
                 <Link
                   key={link.href}

@@ -26,6 +26,7 @@ export function EditEmployeeForm({ employee, schedules, salaryRulesList }: EditE
     designation: employee.designation || "",
     department: employee.department || "",
     phone: employee.phone || "",
+    dateOfBirth: employee.dateOfBirth ? new Date(employee.dateOfBirth).toISOString().slice(0, 10) : "",
     role: employee.role || "EMPLOYEE",
     employmentType: employee.employmentType || "FULL_TIME",
     isActive: employee.isActive,
@@ -73,6 +74,7 @@ export function EditEmployeeForm({ employee, schedules, salaryRulesList }: EditE
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...profile,
+          dateOfBirth: profile.dateOfBirth || null,
           companyScheduleId: schedule.assignedId === "default" ? null : schedule.assignedId,
           salaryRulesId: salary.assignedId === "default" ? null : salary.assignedId
         }),
@@ -242,6 +244,15 @@ export function EditEmployeeForm({ employee, schedules, salaryRulesList }: EditE
             <div>
               <label className="label">Phone</label>
               <input className="input" value={profile.phone} onChange={e => setProfile(p => ({ ...p, phone: e.target.value }))} />
+            </div>
+            <div>
+              <label className="label">Date of Birth</label>
+              <input
+                type="date"
+                className="input"
+                value={profile.dateOfBirth}
+                onChange={e => setProfile(p => ({ ...p, dateOfBirth: e.target.value }))}
+              />
             </div>
           </div>
           <div className="flex gap-2 border-b border-slate-100 pb-4 mb-4">

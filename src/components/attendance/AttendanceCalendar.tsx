@@ -17,6 +17,8 @@ interface AttendanceCalendarProps {
   month: number;
   timeFormat?: "12h" | "24h";
   timezone?: string;
+  // Announcement events reflected on the calendar
+  events?: Array<{ date: string; label: string }>;
 }
 
 const STATUS_DOT: Record<string, string> = {
@@ -29,7 +31,7 @@ const STATUS_DOT: Record<string, string> = {
   WEEKEND: "bg-slate-300",
 };
 
-export function AttendanceCalendar({ records, year, month, timeFormat = "24h", timezone = "Asia/Kolkata" }: AttendanceCalendarProps) {
+export function AttendanceCalendar({ records, year, month, timeFormat = "24h", timezone = "Asia/Kolkata", events = [] }: AttendanceCalendarProps) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
   
@@ -44,7 +46,10 @@ export function AttendanceCalendar({ records, year, month, timeFormat = "24h", t
   const getRecord = (date: Date) =>
     records.find((r) => isSameDay(new Date(r.date), date));
 
-  const [tooltip, setTooltip] = useState<{ record: any; date: Date } | null>(null);
+  const getEvents = (date: Date) =>
+    events.filter((e) => isSameDay(new Date(e.date), date));
+
+  const [tooltip, setTooltip] = useState<{ record: any; date: Date; dayEvents: typeof events } | null>(null);
 
   return (
     <div className="card p-5">
@@ -81,6 +86,7 @@ export function AttendanceCalendar({ records, year, month, timeFormat = "24h", t
       <div className="grid grid-cols-7 gap-0.5">
         {days.map((day) => {
           const record = getRecord(day);
+          const dayEvents = getEvents(day);
           const inMonth = isSameMonth(day, viewDate);
           const today = mounted ? isToday(day) : false;
 
@@ -92,7 +98,7 @@ export function AttendanceCalendar({ records, year, month, timeFormat = "24h", t
                 inMonth ? "hover:bg-slate-50" : "opacity-30",
                 today && "ring-2 ring-blue-500 ring-offset-1"
               )}
-              onMouseEnter={() => record && setTooltip({ record, date: day })}
+              onMouseEnter={() => (record || dayEvents.length > 0) && setTooltip({ record, date: day, dayEvents })}
               onMouseLeave={() => setTooltip(null)}
             >
               <span className={cn(
@@ -102,12 +108,17 @@ export function AttendanceCalendar({ records, year, month, timeFormat = "24h", t
               )}>
                 {format(day, "d")}
               </span>
-              {record && inMonth && (
-                <div className={cn(
-                  "w-1.5 h-1.5 rounded-full mt-0.5",
-                  STATUS_DOT[record.status] || "bg-slate-400"
-                )} />
-              )}
+              <div className="flex items-center gap-0.5 mt-0.5">
+                {record && inMonth && (
+                  <div className={cn(
+                    "w-1.5 h-1.5 rounded-full",
+                    STATUS_DOT[record.status] || "bg-slate-400"
+                  )} />
+                )}
+                {dayEvents.length > 0 && inMonth && (
+                  <div className="w-1.5 h-1.5 rounded-full bg-purple-500" />
+                )}
+              </div>
             </div>
           );
         })}
@@ -117,18 +128,29 @@ export function AttendanceCalendar({ records, year, month, timeFormat = "24h", t
       {tooltip && (
         <div className="mt-3 p-3 bg-slate-50 rounded-lg border border-slate-200 text-xs">
           <p className="font-semibold text-slate-900">{format(tooltip.date, "EEEE, MMMM do")}</p>
-          <p className={cn("mt-1 font-medium", getStatusColor(tooltip.record.status).split(" ")[0])}>
-            {tooltip.record.status.replace("_", " ")}
-          </p>
-          {tooltip.record.checkInAt && (
-            <p className="text-slate-500 mt-0.5">
-              {(() => {
-                const { formatTime } = require("@/lib/utils");
-                const ci = formatTime(new Date(tooltip.record.checkInAt), timeFormat, timezone);
-                const co = tooltip.record.checkOutAt ? formatTime(new Date(tooltip.record.checkOutAt), timeFormat, timezone) : null;
-                return `In: ${ci}${co ? ` · Out: ${co}` : ""}`;
-              })()}
-            </p>
+          {tooltip.record && (
+            <>
+              <p className={cn("mt-1 font-medium", getStatusColor(tooltip.record.status).split(" ")[0])}>
+                {tooltip.record.status.replace("_", " ")}
+              </p>
+              {tooltip.record.checkInAt && (
+                <p className="text-slate-500 mt-0.5">
+                  {(() => {
+                    const { formatTime } = require("@/lib/utils");
+                    const ci = formatTime(new Date(tooltip.record.checkInAt), timeFormat, timezone);
+                    const co = tooltip.record.checkOutAt ? formatTime(new Date(tooltip.record.checkOutAt), timeFormat, timezone) : null;
+                    return `In: ${ci}${co ? ` · Out: ${co}` : ""}`;
+                  })()}
+                </p>
+              )}
+            </>
+          )}
+          {tooltip.dayEvents.length > 0 && (
+            <div className="mt-1.5 space-y-0.5">
+              {tooltip.dayEvents.map((ev, i) => (
+                <p key={i} className="text-purple-600 font-medium">📌 {ev.label}</p>
+              ))}
+            </div>
           )}
         </div>
       )}
@@ -140,6 +162,7 @@ export function AttendanceCalendar({ records, year, month, timeFormat = "24h", t
           { label: "Late", dot: "bg-amber-500" },
           { label: "Half Day", dot: "bg-orange-500" },
           { label: "Absent", dot: "bg-red-500" },
+          { label: "Event", dot: "bg-purple-500" },
         ].map((item) => (
           <div key={item.label} className="flex items-center gap-1.5 text-xs text-slate-500">
             <div className={cn("w-2 h-2 rounded-full", item.dot)} />

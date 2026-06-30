@@ -2,8 +2,11 @@
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 import { getAttendanceSummary } from "@/lib/attendance-engine";
 import { AttendanceCalendar } from "@/components/attendance/AttendanceCalendar";
+
+export const dynamic = "force-dynamic";
 
 export default async function CalendarPage({ searchParams }: { searchParams: { month?: string; year?: string } }) {
   const session = await getServerSession(authOptions);
@@ -14,6 +17,23 @@ export default async function CalendarPage({ searchParams }: { searchParams: { m
   const month = parseInt(searchParams.month || (now.getMonth() + 1).toString());
 
   const summary = await getAttendanceSummary(session.user.id, year, month);
+
+  // Fetch announcements that should reflect on the calendar
+  const announcementEvents = await prisma.announcement.findMany({
+    where: {
+      isActive: true,
+      reflectOnCalendar: true,
+      eventDate: { not: null },
+    },
+    select: { eventDate: true, eventName: true, title: true },
+  });
+
+  const events = announcementEvents
+    .filter((a) => a.eventDate !== null)
+    .map((a) => ({
+      date: (a.eventDate as Date).toISOString(),
+      label: a.eventName || a.title,
+    }));
 
   return (
     <div className="space-y-6 max-w-lg">
@@ -30,6 +50,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: { m
         }))}
         year={year}
         month={month}
+        events={events}
       />
     </div>
   );

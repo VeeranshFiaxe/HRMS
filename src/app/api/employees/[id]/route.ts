@@ -25,7 +25,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 
   try {
     const body = await req.json();
-    const { name, role, employmentType, department, designation, phone, isActive, timeFormat } = body;
+    const { name, role, employmentType, department, designation, phone, isActive, timeFormat, dateOfBirth } = body;
 
     // Only admins can change certain fields
     const isAdmin = session.user.role === "ADMIN";
@@ -41,6 +41,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
         ...(isAdmin && department !== undefined && { department }),
         ...(isAdmin && designation !== undefined && { designation }),
         ...(isAdmin && isActive !== undefined && { isActive }),
+        ...(isAdmin && dateOfBirth !== undefined && { dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : null }),
       },
     });
 
@@ -58,6 +59,12 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     return NextResponse.json({ success: false, error: "Internal error" }, { status: 500 });
   }
 }
+
+// PUT: Full profile save (used by EditEmployeeForm — same as PATCH but for full replace semantics)
+export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
+  return PATCH(req, { params });
+}
+
 
 export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions);

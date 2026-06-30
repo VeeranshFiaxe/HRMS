@@ -24,7 +24,9 @@ import {
   BarChart3,
   UserCircle,
   Menu,
-  X
+  X,
+  Megaphone,
+  Bell
 } from "lucide-react";
 
 interface NavItem {
@@ -34,8 +36,18 @@ interface NavItem {
   adminOnly?: boolean;
 }
 
+// Employee-only navigation items (My Space)
 const navItems: NavItem[] = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { label: "Attendance", href: "/dashboard/attendance", icon: Clock },
+  { label: "Calendar", href: "/dashboard/calendar", icon: Calendar },
+  { label: "Announcements", href: "/dashboard/announcements", icon: Megaphone },
+  { label: "Profile", href: "/dashboard/profile", icon: UserCircle },
+];
+
+// Admin My Space section — same as navItems but without the Dashboard item
+// (admin already has Overview at the top of the admin section)
+const adminSpaceItems: NavItem[] = [
   { label: "Attendance", href: "/dashboard/attendance", icon: Clock },
   { label: "Calendar", href: "/dashboard/calendar", icon: Calendar },
   { label: "Profile", href: "/dashboard/profile", icon: UserCircle },
@@ -45,6 +57,8 @@ const adminNavItems: NavItem[] = [
   { label: "Overview", href: "/admin", icon: LayoutDashboard },
   { label: "Employees", href: "/admin/employees", icon: Users },
   { label: "Attendance", href: "/admin/attendance", icon: BarChart3 },
+  { label: "Announcements", href: "/admin/announcements", icon: Megaphone },
+  { label: "Inbox", href: "/admin/inbox", icon: Bell },
   { label: "Schedules", href: "/admin/schedules", icon: Clock },
   { label: "Holidays", href: "/admin/holidays", icon: PartyPopper },
   { label: "Office & IP", href: "/admin/office", icon: Building2 },
@@ -151,7 +165,7 @@ export function Sidebar({ collapsed = false }: SidebarProps) {
               <p className={cn("px-2 py-1 text-xs font-semibold text-slate-500 uppercase tracking-wider", collapsed && "sr-only")}>
                 My Space
               </p>
-              {navItems.map((item) => (
+              {adminSpaceItems.map((item) => (
                 <NavLink key={`emp-${item.href}`} item={item} active={isActive(item.href)} collapsed={collapsed} />
               ))}
             </div>

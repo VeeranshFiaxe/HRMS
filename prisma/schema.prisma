@@ -57,6 +57,9 @@ enum AuditAction {
   GEOFENCE_CHANGE
   SALARY_RULE_CHANGE
   ATTENDANCE_OVERRIDE
+  ANNOUNCEMENT_CREATE
+  ANNOUNCEMENT_UPDATE
+  ANNOUNCEMENT_DELETE
 }
 
 enum EmploymentType {
@@ -82,6 +85,7 @@ model User {
   phone             String?
   avatar            String?
   joiningDate       DateTime       @default(now())
+  dateOfBirth       DateTime?      @db.Date
   isActive          Boolean        @default(true)
   timeFormat        String         @default("24h")
 
@@ -108,6 +112,7 @@ model User {
   salaryRuleOverride SalaryRuleOverride?
   sessions           Session[]
   auditLogs          AuditLog[]
+  announcements      Announcement[]
 
   @@map("users")
 }
@@ -407,4 +412,47 @@ model AuditLog {
   user        User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@map("audit_logs")
+}
+
+// ─────────────────────────────────────────────
+// ANNOUNCEMENTS
+// ─────────────────────────────────────────────
+
+model Announcement {
+  id                 String    @id @default(cuid())
+  title              String
+  content            String
+  isActive           Boolean   @default(true)
+
+  // Calendar reflection
+  reflectOnCalendar  Boolean   @default(false)
+  eventDate          DateTime? @db.Date
+  eventName          String?
+
+  createdById        String?
+  createdBy          User?     @relation(fields: [createdById], references: [id], onDelete: SetNull)
+
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  @@map("announcements")
+}
+
+// ─────────────────────────────────────────────
+// INBOX ITEMS (approval scaffold for future phases)
+// ─────────────────────────────────────────────
+
+model InboxItem {
+  id          String   @id @default(cuid())
+  type        String   // e.g. "LEAVE_REQUEST", "ONBOARDING", "OTHER"
+  title       String
+  description String?
+  status      String   @default("PENDING")  // PENDING | APPROVED | REJECTED
+  relatedId   String?  // foreign key to related entity (future use)
+  metadata    Json?    // extra data for the item
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("inbox_items")
 }
