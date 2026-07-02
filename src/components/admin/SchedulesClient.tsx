@@ -28,6 +28,7 @@ export function SchedulesClient({ initialSchedules }: Props) {
         name: "New Schedule",
         startTime: "09:00",
         endTime: "18:00",
+        overrideLateAfter: false,
         lateAfter: "09:15",
         halfDayAfter: "14:00",
         monday: true, tuesday: true, wednesday: true, thursday: true, friday: true, saturday: false, sunday: false
@@ -177,8 +178,18 @@ export function SchedulesClient({ initialSchedules }: Props) {
                     <input type="time" className="input" value={schedule.endTime} onChange={e => updateLocalSchedule(schedule.id, 'endTime', e.target.value)} />
                   </div>
                   <div>
-                    <label className="label">Late After</label>
-                    <input type="time" className="input" value={schedule.lateAfter} onChange={e => updateLocalSchedule(schedule.id, 'lateAfter', e.target.value)} />
+                    <label className="label flex items-center justify-between">
+                      Late After
+                      <label className="flex items-center gap-1 cursor-pointer">
+                        <input type="checkbox" checked={schedule.overrideLateAfter} onChange={e => updateLocalSchedule(schedule.id, 'overrideLateAfter', e.target.checked)} className="w-3.5 h-3.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
+                        <span className="text-xs text-slate-500">Override</span>
+                      </label>
+                    </label>
+                    {schedule.overrideLateAfter ? (
+                      <input type="time" className="input" value={schedule.lateAfter} onChange={e => updateLocalSchedule(schedule.id, 'lateAfter', e.target.value)} />
+                    ) : (
+                      <div className="input bg-slate-50 text-slate-400 text-sm flex items-center cursor-not-allowed">Auto-calculated</div>
+                    )}
                   </div>
                   <div>
                     <label className="label">Half Day After</label>

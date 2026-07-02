@@ -108,7 +108,12 @@ export function ProfileForm({ user, schedule, isCustomSchedule }: Props) {
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
-            {[["Start Time", schedule?.startTime], ["End Time", schedule?.endTime], ["Late After", schedule?.lateAfter], ["Half-Day After", schedule?.halfDayAfter]].map(([label, val]) => (
+            {[
+              ["Start Time", schedule?.startTime], 
+              ["End Time", schedule?.endTime], 
+              ["Late After", schedule?.overrideLateAfter ? schedule?.lateAfter : "Auto-calculated"], 
+              ["Half-Day After", schedule?.halfDayAfter]
+            ].map(([label, val]) => (
               <div key={label} className="bg-slate-50 rounded-lg p-3">
                 <p className="text-xs text-slate-500">{label}</p>
                 <p className="font-semibold text-slate-900 mt-0.5">{val || "—"}</p>

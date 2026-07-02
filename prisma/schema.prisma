@@ -60,6 +60,10 @@ enum AuditAction {
   ANNOUNCEMENT_CREATE
   ANNOUNCEMENT_UPDATE
   ANNOUNCEMENT_DELETE
+  LEAVE_REQUEST_CREATE
+  LEAVE_REQUEST_APPROVE
+  LEAVE_REQUEST_REJECT
+  LEAVE_REQUEST_CANCEL
 }
 
 enum EmploymentType {
@@ -67,6 +71,20 @@ enum EmploymentType {
   PART_TIME
   INTERN
   CONTRACT
+}
+
+enum LeaveStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+enum LeaveType {
+  CASUAL
+  SICK
+  ANNUAL
+  UNPAID
 }
 
 // ─────────────────────────────────────────────
@@ -113,6 +131,8 @@ model User {
   sessions           Session[]
   auditLogs          AuditLog[]
   announcements      Announcement[]
+  leaveRequests      LeaveRequest[]   @relation("UserLeaveRequests")
+  leaveBalances      LeaveBalance[]
 
   @@map("users")
 }
@@ -153,6 +173,9 @@ model AttendanceRecord {
   // Server timestamps (NEVER from browser)
   checkInAt         DateTime?        // exact server time of check-in
   checkOutAt        DateTime?        // exact server time of check-out
+
+  // Work hours (calculated at checkout)
+  hoursWorked       Float?           // null if no checkout yet
 
   // Request metadata
   checkInIp         String?
@@ -199,8 +222,9 @@ model CompanySchedule {
   isDefault         Boolean  @default(false)
 
   startTime         String   @default("11:00")  // HH:mm
-  endTime           String   @default("20:00")
-  lateAfter         String   @default("11:15")  // after this = LATE
+  endTime           String   @default("18:00")
+  overrideLateAfter Boolean  @default(false)
+  lateAfter         String   @default("11:15")  // used only if overrideLateAfter is true
   halfDayAfter      String   @default("14:00")  // after this = HALF_DAY
 
   // Working days (true = working)
@@ -230,6 +254,7 @@ model EmployeeSchedule {
 
   startTime         String
   endTime           String
+  overrideLateAfter Boolean  @default(false)
   lateAfter         String
   halfDayAfter      String
 
@@ -310,8 +335,8 @@ model AttendanceRules {
   // Auto-mark absent if no check-in by this time (24h format "HH:mm")
   autoAbsentAfter            String   @default("15:00")
 
-  // Minimum hours for full day
-  minHoursFullDay            Float    @default(8.0)
+  // Minimum hours for full day / half day (configurable)
+  minHoursFullDay            Float    @default(7.5)
   minHoursHalfDay            Float    @default(4.0)
 
   createdAt                  DateTime @default(now())
@@ -335,10 +360,10 @@ model SalaryRules {
   // Formula: baseSalary * (daysWorked / payableWorkingDays)
   // Deductions for late / half day
   halfDayDeductionFactor  Float    @default(0.5)   // half day = 0.5 day deducted
-  lateDeductionPerDay     Float    @default(0)     // optional per-late-day deduction
+  lateDeductionFactor     Float    @default(0.33)  // late = 0.33 day deducted per late day
   absentDeductionFactor   Float    @default(1.0)   // absent = 1 day deducted
 
-  // Paid leave days per month
+  // Paid leave entitlement
   paidLeaveDaysPerMonth   Int      @default(1)
 
   note                    String?
@@ -361,6 +386,7 @@ model SalaryRuleOverride {
 
   baseSalary              Float?
   halfDayDeductionFactor  Float?
+  lateDeductionFactor     Float?
   absentDeductionFactor   Float?
   paidLeaveDaysPerMonth   Int?
   customFormula           String?  // future: expression string
@@ -375,23 +401,52 @@ model SalaryRuleOverride {
 }
 
 // ─────────────────────────────────────────────
-// LEAVE REQUESTS (scaffold for future)
+// LEAVE REQUESTS
 // ─────────────────────────────────────────────
 
 model LeaveRequest {
+  id           String      @id @default(cuid())
+  userId       String
+  user         User        @relation("UserLeaveRequests", fields: [userId], references: [id], onDelete: Cascade)
+  fromDate     DateTime    @db.Date
+  toDate       DateTime    @db.Date
+  totalDays    Int         @default(1)
+  reason       String?
+  leaveType    LeaveType   @default(CASUAL)
+  isPaid       Boolean     @default(true)
+  status       LeaveStatus @default(PENDING)
+  adminNote    String?
+  approvedBy   String?
+  approvedAt   DateTime?
+  cancelledBy  String?
+  cancelledAt  DateTime?
+
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  @@map("leave_requests")
+}
+
+// ─────────────────────────────────────────────
+// LEAVE BALANCE
+// ─────────────────────────────────────────────
+
+model LeaveBalance {
   id          String   @id @default(cuid())
   userId      String
-  fromDate    DateTime @db.Date
-  toDate      DateTime @db.Date
-  reason      String?
-  status      String   @default("PENDING")  // PENDING | APPROVED | REJECTED
-  approvedBy  String?
-  approvedAt  DateTime?
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  year        Int
+  // month: null = annual (full-time); set = monthly tracking (intern/part-time)
+  month       Int?
+  allocated   Float    @default(0)
+  used        Float    @default(0)
+  carried     Float    @default(0)  // rolled over from prior period
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  @@map("leave_requests")
+  @@unique([userId, year, month])
+  @@map("leave_balances")
 }
 
 // ─────────────────────────────────────────────
@@ -429,6 +484,9 @@ model Announcement {
   eventDate          DateTime? @db.Date
   eventName          String?
 
+  // Dashboard pinning
+  pinnedUntil        DateTime?
+
   createdById        String?
   createdBy          User?     @relation(fields: [createdById], references: [id], onDelete: SetNull)
 
@@ -439,7 +497,7 @@ model Announcement {
 }
 
 // ─────────────────────────────────────────────
-// INBOX ITEMS (approval scaffold for future phases)
+// INBOX ITEMS (approval notifications)
 // ─────────────────────────────────────────────
 
 model InboxItem {
@@ -447,8 +505,8 @@ model InboxItem {
   type        String   // e.g. "LEAVE_REQUEST", "ONBOARDING", "OTHER"
   title       String
   description String?
-  status      String   @default("PENDING")  // PENDING | APPROVED | REJECTED
-  relatedId   String?  // foreign key to related entity (future use)
+  status      String   @default("PENDING")  // PENDING | APPROVED | REJECTED | CANCELLED
+  relatedId   String?  // foreign key to related entity (e.g. LeaveRequest.id)
   metadata    Json?    // extra data for the item
 
   createdAt   DateTime @default(now())

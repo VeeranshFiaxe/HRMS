@@ -187,8 +187,9 @@ export function calculateAttendancePercentage(
  */
 export function determineAttendanceStatus(
   checkInAt: Date,
-  schedule: { startTime: string; lateAfter: string; halfDayAfter: string },
-  timezone: string = "Asia/Kolkata"
+  schedule: { startTime: string; lateAfter: string; halfDayAfter: string; overrideLateAfter?: boolean },
+  timezone: string = "Asia/Kolkata",
+  graceMinutes: number = 0
 ): { status: "PRESENT" | "LATE" | "HALF_DAY"; isLate: boolean; lateMinutes: number } {
   // Get the check-in time represented as a Date object in the office timezone
   const checkInZoned = toZonedTime(checkInAt, timezone);
@@ -210,7 +211,13 @@ export function determineAttendanceStatus(
     return fromZonedTime(targetZoned, timezone);
   };
 
-  const lateAfterDate = parseLocalTime(schedule.lateAfter);
+  let lateAfterDate = parseLocalTime(schedule.lateAfter);
+  if (!schedule.overrideLateAfter) {
+    const startTimeDate = parseLocalTime(schedule.startTime);
+    // add graceMinutes to startTime to get dynamic late threshold
+    lateAfterDate = new Date(startTimeDate.getTime() + graceMinutes * 60000);
+  }
+
   const halfDayAfterDate = parseLocalTime(schedule.halfDayAfter);
 
   const isLate = checkInAt > lateAfterDate;

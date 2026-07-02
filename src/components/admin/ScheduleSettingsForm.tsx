@@ -13,7 +13,8 @@ export function ScheduleSettingsForm({ schedule }: Props) {
   const [form, setForm] = useState({
     name: schedule?.name || "Default Schedule",
     startTime: schedule?.startTime || "11:00",
-    endTime: schedule?.endTime || "20:00",
+    endTime: schedule?.endTime || "18:00",
+    overrideLateAfter: schedule?.overrideLateAfter ?? false,
     lateAfter: schedule?.lateAfter || "11:15",
     halfDayAfter: schedule?.halfDayAfter || "14:00",
     monday: schedule?.monday ?? true,
@@ -28,8 +29,10 @@ export function ScheduleSettingsForm({ schedule }: Props) {
   const handleSave = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/schedules", {
-        method: "PUT",
+      const endpoint = schedule?.id ? `/api/schedules/${schedule.id}` : "/api/schedules";
+      const method = schedule?.id ? "PUT" : "POST";
+      const res = await fetch(endpoint, {
+        method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),
       });
@@ -55,7 +58,6 @@ export function ScheduleSettingsForm({ schedule }: Props) {
         {[
           { key: "startTime", label: "Start Time" },
           { key: "endTime", label: "End Time" },
-          { key: "lateAfter", label: "Late After" },
           { key: "halfDayAfter", label: "Half-Day After" },
         ].map(({ key, label }) => (
           <div key={key}>
@@ -68,6 +70,33 @@ export function ScheduleSettingsForm({ schedule }: Props) {
             />
           </div>
         ))}
+        
+        <div>
+          <label className="label flex items-center justify-between">
+            Late After
+            <label className="flex items-center gap-1.5 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={form.overrideLateAfter}
+                onChange={e => setForm(f => ({ ...f, overrideLateAfter: e.target.checked }))}
+                className="w-3.5 h-3.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+              />
+              <span className="text-xs font-normal text-slate-500">Manual Override</span>
+            </label>
+          </label>
+          {form.overrideLateAfter ? (
+            <input
+              type="time"
+              className="input"
+              value={form.lateAfter}
+              onChange={e => setForm(f => ({ ...f, lateAfter: e.target.value }))}
+            />
+          ) : (
+            <div className="input bg-slate-50 text-slate-400 text-sm flex items-center select-none cursor-not-allowed">
+              Calculated via Grace Time
+            </div>
+          )}
+        </div>
       </div>
 
       <div>
@@ -92,7 +121,7 @@ export function ScheduleSettingsForm({ schedule }: Props) {
 
       <div className="pt-2 border-t border-slate-100">
         <div className="bg-blue-50 rounded-lg p-4 text-sm text-blue-800 mb-4">
-          <strong>How timings work:</strong> Checking in after <strong>{form.lateAfter}</strong> marks the record as Late.
+          <strong>How timings work:</strong> Checking in after <strong>{form.overrideLateAfter ? form.lateAfter : "Start Time + Grace Time"}</strong> marks the record as Late.
           Checking in after <strong>{form.halfDayAfter}</strong> marks it as Half Day.
           Sundays and non-working days are automatically excluded from attendance calculations.
         </div>

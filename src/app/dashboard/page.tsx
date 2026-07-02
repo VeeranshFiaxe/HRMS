@@ -10,6 +10,7 @@ import { AttendanceCalendar } from "@/components/attendance/AttendanceCalendar";
 import { RecentAttendance } from "@/components/attendance/RecentAttendance";
 import { format, startOfDay } from "date-fns";
 import { LiveClock } from "@/components/layout/LiveClock";
+import { PinnedAnnouncements } from "@/components/employee/PinnedAnnouncements";
 
 export default async function DashboardPage() {
   const session = await getServerSession(authOptions);
@@ -44,6 +45,16 @@ export default async function DashboardPage() {
     select: { name: true, designation: true, department: true, joiningDate: true, timeFormat: true },
   });
 
+  // Active pinned announcements
+  const pinnedAnnouncements = await prisma.announcement.findMany({
+    where: { 
+      isActive: true,
+      pinnedUntil: { gte: now }
+    },
+    include: { createdBy: { select: { name: true } } },
+    orderBy: { createdAt: "desc" },
+  });
+
   const officeSettings = await prisma.officeSettings.findFirst();
   const timezone = officeSettings?.timezone || "Asia/Kolkata";
   const timeFormat = (user?.timeFormat as "12h" | "24h") || "24h";
@@ -75,6 +86,9 @@ export default async function DashboardPage() {
         timeFormat={timeFormat}
         timezone={timezone}
       />
+
+      {/* Pinned Announcements */}
+      <PinnedAnnouncements announcements={JSON.parse(JSON.stringify(pinnedAnnouncements))} />
 
       {/* Stats */}
       <StatsCards summary={summary} />

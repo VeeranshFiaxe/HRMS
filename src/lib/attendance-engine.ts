@@ -56,20 +56,42 @@ export interface CheckOutResult {
 // ─── Effective schedule ────────────────────────────────────────
 
 export async function getEffectiveSchedule(userId: string) {
+  let schedule = null;
+
   // Prefer employee-specific schedule
   const custom = await prisma.employeeSchedule.findUnique({ where: { userId } });
-  if (custom) return custom;
-  
-  // Next check specific assigned schedule
-  const user = await prisma.user.findUnique({ where: { id: userId }, include: { companySchedule: true }});
-  if (user?.companySchedule) return user.companySchedule;
+  if (custom) schedule = custom;
+  else {
+    // Next check specific assigned schedule
+    const user = await prisma.user.findUnique({ where: { id: userId }, include: { companySchedule: true }});
+    if (user?.companySchedule) schedule = user.companySchedule;
+    else {
+      // Fall back to global default
+      const defaultSchedule = await prisma.companySchedule.findFirst({ where: { isDefault: true }});
+      if (defaultSchedule) schedule = defaultSchedule;
+      else {
+        // Ultimate fallback just in case no default is set
+        schedule = await prisma.companySchedule.findFirst();
+      }
+    }
+  }
 
-  // Fall back to global default
-  const defaultSchedule = await prisma.companySchedule.findFirst({ where: { isDefault: true }});
-  if (defaultSchedule) return defaultSchedule;
+  // Inject dynamic lateAfter if not overridden
+  if (schedule && !schedule.overrideLateAfter) {
+    const rules = await prisma.attendanceRules.findFirst();
+    const graceMinutes = rules?.graceMinutes || 0;
+    
+    if (graceMinutes > 0) {
+      const [h, m] = schedule.startTime.split(":").map(Number);
+      const lateDate = new Date();
+      lateDate.setHours(h, m + graceMinutes, 0, 0);
+      schedule.lateAfter = `${lateDate.getHours().toString().padStart(2, "0")}:${lateDate.getMinutes().toString().padStart(2, "0")}`;
+    } else {
+      schedule.lateAfter = schedule.startTime;
+    }
+  }
 
-  // Ultimate fallback just in case no default is set
-  return prisma.companySchedule.findFirst();
+  return schedule;
 }
 
 // ─── Holiday check ─────────────────────────────────────────────
@@ -203,7 +225,9 @@ export async function processCheckIn(req: CheckInRequest): Promise<CheckInResult
 
     // 7. Calculate attendance status
     const timezone = office?.timezone || "Asia/Kolkata";
-    const { status, isLate, lateMinutes } = determineAttendanceStatus(now, schedule, timezone);
+    const rules = await prisma.attendanceRules.findFirst();
+    const graceMinutes = rules?.graceMinutes || 0;
+    const { status, isLate, lateMinutes } = determineAttendanceStatus(now, schedule, timezone, graceMinutes);
 
     // 8. Create or update attendance record (upsert to handle edge cases)
     const record = await prisma.attendanceRecord.upsert({
@@ -306,22 +330,36 @@ export async function processCheckOut(req: CheckOutRequest): Promise<CheckOutRes
       };
     }
 
-    // 4. Calculate duration and check for daily hour requirement
+    // 4. Calculate duration using configurable thresholds
     const durationMs = now.getTime() - record.checkInAt.getTime();
-    const durationHours = durationMs / (1000 * 60 * 60);
+    const hoursWorked = durationMs / (1000 * 60 * 60);
+
+    // Fetch attendance rules for configurable thresholds
+    const rules = await prisma.attendanceRules.findFirst();
+    const minHoursFullDay = rules?.minHoursFullDay ?? 7.5;
+    const minHoursHalfDay = rules?.minHoursHalfDay ?? 4.0;
 
     let newStatus = record.status;
     let newIsHalfDay = record.isHalfDay;
     let newOverrideNote = record.overrideNote;
 
-    if (durationHours < 3.5) {
-      newStatus = "ABSENT";
-      newIsHalfDay = false;
-      const noteStr = "Daily hour requirement not fulfilled";
-      newOverrideNote = newOverrideNote ? `${newOverrideNote} | ${noteStr}` : noteStr;
+    // Only downgrade status based on hours — don't upgrade (admin may have set ON_LEAVE etc.)
+    if (record.status !== "ON_LEAVE" && record.status !== "HOLIDAY" && record.status !== "WEEKEND") {
+      if (hoursWorked < minHoursHalfDay) {
+        newStatus = "ABSENT";
+        newIsHalfDay = false;
+        const noteStr = `Insufficient hours worked (${hoursWorked.toFixed(1)}h < ${minHoursHalfDay}h minimum)`;
+        newOverrideNote = newOverrideNote ? `${newOverrideNote} | ${noteStr}` : noteStr;
+      } else if (hoursWorked < minHoursFullDay) {
+        newStatus = "HALF_DAY";
+        newIsHalfDay = true;
+        const noteStr = `Partial day (${hoursWorked.toFixed(1)}h worked)`;
+        newOverrideNote = newOverrideNote ? `${newOverrideNote} | ${noteStr}` : noteStr;
+      }
+      // >= minHoursFullDay: keep existing status (PRESENT, LATE, etc.)
     }
 
-    // 5. Update record with check-out time
+    // 5. Update record with check-out time and hoursWorked
     const updated = await prisma.attendanceRecord.update({
       where: { id: record.id },
       data: {
@@ -333,6 +371,7 @@ export async function processCheckOut(req: CheckOutRequest): Promise<CheckOutRes
         checkOutGeoValid: req.lat != null ? true : null,
         status: newStatus,
         isHalfDay: newIsHalfDay,
+        hoursWorked: Math.round(hoursWorked * 100) / 100,
         overrideNote: newOverrideNote,
       },
     });
@@ -360,11 +399,13 @@ async function checkLateStreakPenalty(userId: string, today: Date) {
 
     const streakDays = rules.lateStreakDays;
 
-    // Get last N working days
+    // Get last N working days within the CURRENT month (no cross-month rollover)
+    const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+    
     const recentRecords = await prisma.attendanceRecord.findMany({
       where: {
         userId,
-        date: { lte: today },
+        date: { gte: monthStart, lte: today },
         status: { in: ["LATE", "PRESENT"] },
       },
       orderBy: { date: "desc" },
@@ -443,9 +484,21 @@ export async function getAttendanceSummary(userId: string, year: number, month: 
   const lateDays = records.filter((r) => r.status === "LATE").length;
   const halfDays = records.filter((r) => r.status === "HALF_DAY").length;
   const absentDays = records.filter((r) => r.status === "ABSENT").length;
+  const onLeaveDays = records.filter((r) => r.status === "ON_LEAVE").length;
 
-  // Effective present = present + late + half_day*0.5
-  const effectivePresent = presentDays + lateDays + halfDays * 0.5;
+  // Total hours worked across all checked-in records
+  const totalHoursWorked = records.reduce((sum, r) => {
+    if (r.hoursWorked != null) return sum + r.hoursWorked;
+    // If no checkout yet, estimate from checkInAt to now
+    if (r.checkInAt && !r.checkOutAt) {
+      const hrs = (new Date().getTime() - new Date(r.checkInAt).getTime()) / (1000 * 60 * 60);
+      return sum + Math.min(hrs, 24); // cap at 24h
+    }
+    return sum;
+  }, 0);
+
+  // Effective present = present + late + half_day*0.5 + on_leave (paid leave counts as worked)
+  const effectivePresent = presentDays + lateDays + halfDays * 0.5 + onLeaveDays;
   const attendancePercentage = totalWorkingDays > 0
     ? Math.round((effectivePresent / totalWorkingDays) * 100)
     : 0;
@@ -468,6 +521,8 @@ export async function getAttendanceSummary(userId: string, year: number, month: 
     absentDays,
     lateDays,
     halfDays,
+    onLeaveDays,
+    totalHoursWorked: Math.round(totalHoursWorked * 10) / 10,
     attendancePercentage,
     lateStreak,
     records,

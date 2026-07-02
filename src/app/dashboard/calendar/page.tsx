@@ -18,13 +18,9 @@ export default async function CalendarPage({ searchParams }: { searchParams: { m
 
   const summary = await getAttendanceSummary(session.user.id, year, month);
 
-  // Fetch announcements that should reflect on the calendar
+  // Fetch announcement events
   const announcementEvents = await prisma.announcement.findMany({
-    where: {
-      isActive: true,
-      reflectOnCalendar: true,
-      eventDate: { not: null },
-    },
+    where: { isActive: true, reflectOnCalendar: true, eventDate: { not: null } },
     select: { eventDate: true, eventName: true, title: true },
   });
 
@@ -35,11 +31,31 @@ export default async function CalendarPage({ searchParams }: { searchParams: { m
       label: a.eventName || a.title,
     }));
 
+  // Fetch leave requests for this user (to show on calendar)
+  const leaveRequests = await prisma.leaveRequest.findMany({
+    where: {
+      userId: session.user.id,
+      status: { in: ["APPROVED", "PENDING"] },
+      // Show if overlaps with current month view
+      fromDate: { lte: new Date(year, month, 0) },
+      toDate: { gte: new Date(year, month - 1, 1) },
+    },
+    select: { fromDate: true, toDate: true, status: true, leaveType: true, totalDays: true },
+  });
+
+  const leaves = leaveRequests.map(l => ({
+    fromDate: l.fromDate.toISOString(),
+    toDate: l.toDate.toISOString(),
+    status: l.status,
+    leaveType: l.leaveType,
+    totalDays: l.totalDays,
+  }));
+
   return (
     <div className="space-y-6 max-w-lg">
       <div className="page-header">
         <h1 className="page-title">Attendance Calendar</h1>
-        <p className="page-subtitle">Visual overview of your monthly attendance</p>
+        <p className="page-subtitle">Visual overview of your attendance — click a date to apply leave</p>
       </div>
       <AttendanceCalendar
         records={summary.records.map((r: any) => ({
@@ -47,10 +63,13 @@ export default async function CalendarPage({ searchParams }: { searchParams: { m
           status: r.status,
           checkInAt: r.checkInAt,
           checkOutAt: r.checkOutAt,
+          hoursWorked: r.hoursWorked,
         }))}
         year={year}
         month={month}
         events={events}
+        leaves={leaves}
+        showLeaveApply={true}
       />
     </div>
   );

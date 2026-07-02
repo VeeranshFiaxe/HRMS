@@ -71,7 +71,7 @@ async function main() {
     create: {
       id: "default",
       halfDayDeductionFactor: 0.5,
-      lateDeductionPerDay: 0,
+      lateDeductionFactor: 0.33,
       absentDeductionFactor: 1.0,
       paidLeaveDaysPerMonth: 1,
       note: "Default salary calculation: baseSalary × (daysWorked / payableWorkingDays)",

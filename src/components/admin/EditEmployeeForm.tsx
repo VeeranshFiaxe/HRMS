@@ -4,7 +4,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Save, Loader2, Trash2 } from "lucide-react";
+import { ArrowLeft, Save, Loader2, Trash2, Download } from "lucide-react";
 import toast from "react-hot-toast";
 
 interface EditEmployeeFormProps {
@@ -40,6 +40,7 @@ export function EditEmployeeForm({ employee, schedules, salaryRulesList }: EditE
     enabled: !!employee.customSchedule,
     startTime: employee.customSchedule?.startTime || "09:00",
     endTime: employee.customSchedule?.endTime || "18:00",
+    overrideLateAfter: employee.customSchedule?.overrideLateAfter ?? false,
     lateAfter: sched.lateAfter || "11:15",
     halfDayAfter: sched.halfDayAfter || "14:00",
     monday: sched.monday ?? true,
@@ -133,6 +134,49 @@ export function EditEmployeeForm({ employee, schedules, salaryRulesList }: EditE
     } finally {
       setBreakupLoading(false);
     }
+  };
+
+  const downloadPDF = async () => {
+    if (!salaryBreakup) return;
+
+    const { default: jsPDF } = await import("jspdf");
+    const { default: autoTable } = await import("jspdf-autotable");
+
+    const doc = new jsPDF();
+    const dateStr = new Date().toLocaleString("default", { month: "long", year: "numeric" });
+    
+    // Header
+    doc.setFontSize(20);
+    doc.text("Salary Breakdown", 14, 22);
+    
+    doc.setFontSize(11);
+    doc.setTextColor(100);
+    doc.text(`Employee: ${employee.name}`, 14, 32);
+    doc.text(`Department: ${employee.department || "N/A"}`, 14, 38);
+    doc.text(`Month: ${dateStr}`, 14, 44);
+
+    autoTable(doc, {
+      startY: 52,
+      head: [["Description", "Details", "Amount"]],
+      body: [
+        ["Base Salary", "", `Rs ${(salaryBreakup.baseSalary || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}`],
+        ["Total Working Days", `${salaryBreakup.totalWorkingDays || 0} days`, ""],
+        ["Per Day Rate", "", `Rs ${(salaryBreakup.perDayRate || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}`],
+        ["Days Present (Full)", `${salaryBreakup.presentFullDays || 0} days`, ""],
+        ["Days Half", `${salaryBreakup.halfDays || 0} days`, ""],
+        ["Days Late", `${salaryBreakup.lateDays || 0} days`, ""],
+        ["Days Absent", `${salaryBreakup.absentDays || 0} days`, ""],
+        ["Late Penalty", `-${salaryBreakup.latePenalty || 0} days`, ""],
+        ["Paid Leaves Utilized", `${salaryBreakup.paidLeavesUtilized || 0} / ${salaryBreakup.paidLeavesAllowed || 0}`, ""],
+        ["Effective Payable Days", `${salaryBreakup.totalPaidDays || 0} days`, ""],
+      ],
+      foot: [["Final Calculated Salary", "", `Rs ${(salaryBreakup.netEarned || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}`]],
+      theme: "grid",
+      headStyles: { fillColor: [59, 130, 246] },
+      footStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: "bold" },
+    });
+
+    doc.save(`${employee.name.replace(/\s+/g, '_')}_Salary_${dateStr.replace(/\s+/g, '_')}.pdf`);
   };
 
   if (tab === "salary" && !salaryBreakup && !breakupLoading) {
@@ -325,8 +369,18 @@ export function EditEmployeeForm({ employee, schedules, salaryRulesList }: EditE
                   <input type="time" className="input" value={schedule.endTime} onChange={e => setSchedule(s => ({ ...s, endTime: e.target.value }))} />
                 </div>
                 <div>
-                  <label className="label">Late After</label>
-                  <input type="time" className="input" value={schedule.lateAfter} onChange={e => setSchedule(s => ({ ...s, lateAfter: e.target.value }))} />
+                  <label className="label flex items-center justify-between">
+                    Late After
+                    <label className="flex items-center gap-1 cursor-pointer">
+                      <input type="checkbox" checked={schedule.overrideLateAfter} onChange={e => setSchedule(s => ({ ...s, overrideLateAfter: e.target.checked }))} className="w-3 h-3 rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
+                      <span className="text-[10px] text-slate-500">Override</span>
+                    </label>
+                  </label>
+                  {schedule.overrideLateAfter ? (
+                    <input type="time" className="input" value={schedule.lateAfter} onChange={e => setSchedule(s => ({ ...s, lateAfter: e.target.value }))} />
+                  ) : (
+                    <div className="input bg-slate-50 text-slate-400 text-xs flex items-center cursor-not-allowed truncate">Auto-calculated</div>
+                  )}
                 </div>
                 <div>
                   <label className="label">Half Day After</label>
@@ -438,7 +492,15 @@ export function EditEmployeeForm({ employee, schedules, salaryRulesList }: EditE
           <div className="mt-8 border-t border-slate-100 pt-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-medium text-slate-900">Current Month Salary Breakup</h3>
-              <button onClick={fetchSalaryBreakup} className="text-sm text-blue-600 hover:text-blue-700">Refresh</button>
+              <div className="flex items-center gap-3">
+                {salaryBreakup && (
+                  <button onClick={downloadPDF} className="text-sm flex items-center gap-1 text-slate-600 hover:text-blue-600 font-medium">
+                    <Download size={14} />
+                    Download PDF
+                  </button>
+                )}
+                <button onClick={fetchSalaryBreakup} className="text-sm text-blue-600 hover:text-blue-700 font-medium">Refresh</button>
+              </div>
             </div>
             
             {breakupLoading ? (

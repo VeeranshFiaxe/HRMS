@@ -14,6 +14,7 @@ interface Announcement {
   reflectOnCalendar: boolean;
   eventDate: string | null;
   eventName: string | null;
+  pinnedUntil: string | null;
   createdAt: string;
   createdBy: { name: string } | null;
 }
@@ -28,6 +29,7 @@ interface FormState {
   reflectOnCalendar: boolean;
   eventDate: string;
   eventName: string;
+  pinnedDays: number;
 }
 
 const emptyForm: FormState = {
@@ -36,6 +38,7 @@ const emptyForm: FormState = {
   reflectOnCalendar: false,
   eventDate: "",
   eventName: "",
+  pinnedDays: 0,
 };
 
 export function AnnouncementsAdminClient({ initialAnnouncements }: Props) {
@@ -61,6 +64,7 @@ export function AnnouncementsAdminClient({ initialAnnouncements }: Props) {
       reflectOnCalendar: ann.reflectOnCalendar,
       eventDate: ann.eventDate ? ann.eventDate.slice(0, 10) : "",
       eventName: ann.eventName || "",
+      pinnedDays: 0, // We reset this on edit, or you could calculate it
     });
     setShowForm(true);
   };
@@ -84,6 +88,7 @@ export function AnnouncementsAdminClient({ initialAnnouncements }: Props) {
         reflectOnCalendar: form.reflectOnCalendar,
         eventDate: form.reflectOnCalendar && form.eventDate ? form.eventDate : null,
         eventName: form.reflectOnCalendar && form.eventName ? form.eventName.trim() : null,
+        pinnedDays: form.pinnedDays,
       };
 
       let res: Response;
@@ -213,13 +218,33 @@ export function AnnouncementsAdminClient({ initialAnnouncements }: Props) {
                   <label className="label">Event Name (on calendar)</label>
                   <input
                     className="input"
-                    placeholder="e.g. Team Offsite"
+                    placeholder="Defaults to announcement title"
                     value={form.eventName}
                     onChange={(e) => setForm((f) => ({ ...f, eventName: e.target.value }))}
                   />
                 </div>
               </div>
             )}
+
+            {/* Dashboard Pin */}
+            <div className="flex items-center gap-3 p-3 rounded-lg border border-slate-200 bg-white">
+              <div className="flex flex-col gap-1 w-full">
+                <label className="label">Pin to Employee Dashboard</label>
+                <select 
+                  className="input" 
+                  value={form.pinnedDays}
+                  onChange={(e) => setForm(f => ({ ...f, pinnedDays: Number(e.target.value) }))}
+                >
+                  <option value={0}>Don't Pin</option>
+                  <option value={1}>1 Day</option>
+                  <option value={3}>3 Days</option>
+                  <option value={7}>1 Week</option>
+                  <option value={30}>1 Month</option>
+                  <option value={-1}>Forever</option>
+                </select>
+                <p className="text-xs text-slate-500">Displays a flashing banner under the check-in card.</p>
+              </div>
+            </div>
 
             <div className="flex items-center gap-3 pt-1">
               <button onClick={handleSave} disabled={saving} className="btn-primary">
@@ -269,6 +294,11 @@ export function AnnouncementsAdminClient({ initialAnnouncements }: Props) {
                             <span className="badge text-blue-600 bg-blue-50 text-xs">
                               <Calendar size={10} className="mr-1" />
                               On Calendar
+                            </span>
+                          )}
+                          {ann.pinnedUntil && new Date(ann.pinnedUntil) > new Date() && (
+                            <span className="badge text-purple-600 bg-purple-50 text-xs font-semibold">
+                              Pinned
                             </span>
                           )}
                         </div>

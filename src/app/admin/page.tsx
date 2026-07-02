@@ -107,7 +107,12 @@ export default async function AdminDashboardPage() {
   // Total Salary Payable calculation
   const salaryPromises = allEmployees.map(emp => calculateSalary(emp.id, now.getFullYear(), now.getMonth() + 1));
   const salaryResults = await Promise.all(salaryPromises);
-  const totalSalaryPayable = salaryResults.reduce((acc, res) => acc + (res.success && res.data ? res.data.netEarned : 0), 0);
+  const totalSalaryPayable = salaryResults.reduce((acc, res) => acc + (res.success && res.data ? (res.data as any).netSalary ?? (res.data as any).netEarned ?? 0 : 0), 0);
+
+  // Pending leave requests
+  const pendingLeaveCount = await prisma.leaveRequest.count({
+    where: { status: "PENDING" },
+  });
 
   // Announcements — latest 3
   const announcements = await prisma.announcement.findMany({
@@ -198,7 +203,14 @@ export default async function AdminDashboardPage() {
             value: `₹${totalSalaryPayable.toLocaleString(undefined, { maximumFractionDigits: 0 })}`,
             icon: TrendingUp,
             color: "text-purple-600 bg-purple-100",
-            href: "/admin/salary",
+            href: "/admin/payroll",
+          },
+          {
+            label: "Pending Leaves",
+            value: pendingLeaveCount,
+            icon: Bell,
+            color: "text-blue-600 bg-blue-100",
+            href: "/admin/attendance/leave?status=PENDING",
           },
         ].map((stat) => {
           const Icon = stat.icon;

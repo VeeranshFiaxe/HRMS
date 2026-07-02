@@ -10,12 +10,12 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 
   try {
     const body = await req.json();
-    const { startTime, endTime, lateAfter, halfDayAfter, monday, tuesday, wednesday, thursday, friday, saturday, sunday, note } = body;
+    const { startTime, endTime, overrideLateAfter, lateAfter, halfDayAfter, monday, tuesday, wednesday, thursday, friday, saturday, sunday, note } = body;
 
     const schedule = await prisma.employeeSchedule.upsert({
       where: { userId: params.id },
-      create: { userId: params.id, startTime, endTime, lateAfter, halfDayAfter, monday, tuesday, wednesday, thursday, friday, saturday, sunday, note },
-      update: { startTime, endTime, lateAfter, halfDayAfter, monday, tuesday, wednesday, thursday, friday, saturday, sunday, note },
+      create: { userId: params.id, startTime, endTime, overrideLateAfter, lateAfter, halfDayAfter, monday, tuesday, wednesday, thursday, friday, saturday, sunday, note },
+      update: { startTime, endTime, overrideLateAfter, lateAfter, halfDayAfter, monday, tuesday, wednesday, thursday, friday, saturday, sunday, note },
     });
 
     await prisma.auditLog.create({
