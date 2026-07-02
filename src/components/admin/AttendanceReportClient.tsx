@@ -194,6 +194,22 @@ export function AttendanceReportClient({
     return [...new Set(all)].sort();
   }, [employees]);
 
+  // ─── Day view grouping ───────────────────────────────────────
+  const dayGroups = useMemo(() => {
+    if (localView !== "day") return [];
+    const grouped = new Map<string, AttendanceRecord[]>();
+    for (const r of records) {
+      const dateKey = r.date.split('T')[0];
+      if (!grouped.has(dateKey)) grouped.set(dateKey, []);
+      grouped.get(dateKey)!.push(r);
+    }
+    return Array.from(grouped.entries()).map(([dateStr, recs]) => ({
+      dateStr,
+      displayDate: format(new Date(dateStr), "dd MMM, EEE"),
+      records: recs
+    })).sort((a, b) => b.dateStr.localeCompare(a.dateStr));
+  }, [records, localView]);
+
   // ─── Week view ───────────────────────────────────────────────
   const weekView = useMemo(() => {
     if (localView !== "week") return [];
@@ -384,73 +400,79 @@ export function AttendanceReportClient({
 
       {/* ─── DAY VIEW ─── */}
       {localView === "day" && (
-        <div className="card overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>Date</th>
-                  <th>Employee</th>
-                  <th>Check In</th>
-                  <th>Check Out</th>
-                  <th>Hours</th>
-                  <th>Status</th>
-                  <th>Late By</th>
-                  <th>IP</th>
-                  <th>Note</th>
-                </tr>
-              </thead>
-              <tbody>
-                {records.length === 0 && (
-                  <tr><td colSpan={9} className="text-center py-12 text-slate-400">No records for this period</td></tr>
-                )}
-                {records.map(record => {
-                  const checkIn = record.checkInAt ? new Date(record.checkInAt) : null;
-                  const checkOut = record.checkOutAt ? new Date(record.checkOutAt) : null;
-                  const hoursStr = record.hoursWorked != null
-                    ? `${record.hoursWorked.toFixed(1)}h`
-                    : checkIn && !checkOut ? "In Progress" : "—";
-
-                  return (
-                    <tr key={record.id}>
-                      <td className="font-medium" suppressHydrationWarning>{format(new Date(record.date), "dd MMM, EEE")}</td>
-                      <td>
-                        <p className="font-medium text-slate-900">{record.user.name}</p>
-                        <p className="text-xs text-slate-400">{record.user.department}</p>
-                      </td>
-                      <td className="font-mono text-sm" suppressHydrationWarning>{checkIn ? format(checkIn, "HH:mm:ss") : "—"}</td>
-                      <td className="font-mono text-sm" suppressHydrationWarning>{checkOut ? format(checkOut, "HH:mm:ss") : "—"}</td>
-                      <td className={cn("text-sm font-medium",
-                        record.hoursWorked != null && record.hoursWorked >= 7.5 ? "text-emerald-600" :
-                        record.hoursWorked != null && record.hoursWorked >= 4 ? "text-amber-600" :
-                        record.hoursWorked != null ? "text-red-600" : "text-slate-400")}>
-                        {hoursStr}
-                      </td>
-                      <td>
-                        <div className="relative">
-                          <select value={record.status}
-                            onChange={(e) => handleStatusChange(record.id, e.target.value)}
-                            disabled={updatingId === record.id}
-                            className={cn("badge appearance-none cursor-pointer pr-5 border-transparent focus:ring-2 focus:ring-blue-500",
-                              getStatusColor(record.status), updatingId === record.id && "opacity-50")}>
-                            <option value="PRESENT">Present</option>
-                            <option value="LATE">Late</option>
-                            <option value="HALF_DAY">Half Day</option>
-                            <option value="ABSENT">Absent</option>
-                            <option value="ON_LEAVE">On Leave</option>
-                          </select>
-                          <ChevronDown size={11} className="absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none opacity-50" />
-                        </div>
-                      </td>
-                      <td className="text-sm">{record.lateMinutes > 0 ? <span className="text-amber-600 font-medium">+{record.lateMinutes}m</span> : "—"}</td>
-                      <td className="text-xs font-mono text-slate-400">{record.checkInIp || "—"}</td>
-                      <td className="text-xs text-slate-400 max-w-[120px] truncate" title={record.overrideNote || ""}>{record.overrideNote || "—"}</td>
+        <div className="space-y-6">
+          {dayGroups.length === 0 && (
+            <div className="card p-12 text-center text-slate-400">No records for this period</div>
+          )}
+          {dayGroups.map(group => (
+            <div key={group.dateStr} className="card overflow-hidden">
+              <div className="bg-slate-50 px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+                <h3 className="font-semibold text-slate-800">{group.displayDate}</h3>
+                <span className="text-xs text-slate-500 font-medium">{group.records.length} records</span>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="table w-full">
+                  <thead>
+                    <tr>
+                      <th>Employee</th>
+                      <th>Check In</th>
+                      <th>Check Out</th>
+                      <th>Hours</th>
+                      <th>Status</th>
+                      <th>Late By</th>
+                      <th>IP</th>
+                      <th>Note</th>
                     </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                  </thead>
+                  <tbody>
+                    {group.records.map(record => {
+                      const checkIn = record.checkInAt ? new Date(record.checkInAt) : null;
+                      const checkOut = record.checkOutAt ? new Date(record.checkOutAt) : null;
+                      const hoursStr = record.hoursWorked != null
+                        ? `${record.hoursWorked.toFixed(1)}h`
+                        : checkIn && !checkOut ? "In Progress" : "—";
+                      
+                      return (
+                        <tr key={record.id}>
+                          <td>
+                            <p className="font-medium text-slate-900">{record.user.name}</p>
+                            <p className="text-xs text-slate-400">{record.user.department}</p>
+                          </td>
+                          <td className="font-mono text-sm" suppressHydrationWarning>{checkIn ? format(checkIn, "HH:mm:ss") : "—"}</td>
+                          <td className="font-mono text-sm" suppressHydrationWarning>{checkOut ? format(checkOut, "HH:mm:ss") : "—"}</td>
+                          <td className={cn("text-sm font-medium",
+                            record.hoursWorked != null && record.hoursWorked >= 7.5 ? "text-emerald-600" :
+                            record.hoursWorked != null && record.hoursWorked >= 4 ? "text-amber-600" :
+                            record.hoursWorked != null ? "text-red-600" : "text-slate-400")}>
+                            {hoursStr}
+                          </td>
+                          <td>
+                            <div className="relative">
+                              <select value={record.status}
+                                onChange={(e) => handleStatusChange(record.id, e.target.value)}
+                                disabled={updatingId === record.id}
+                                className={cn("badge appearance-none cursor-pointer pr-5 border-transparent focus:ring-2 focus:ring-blue-500",
+                                  getStatusColor(record.status), updatingId === record.id && "opacity-50")}>
+                                <option value="PRESENT">Present</option>
+                                <option value="LATE">Late</option>
+                                <option value="HALF_DAY">Half Day</option>
+                                <option value="ABSENT">Absent</option>
+                                <option value="ON_LEAVE">On Leave</option>
+                              </select>
+                              <ChevronDown size={11} className="absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none opacity-50" />
+                            </div>
+                          </td>
+                          <td className="text-sm">{record.lateMinutes > 0 ? <span className="text-amber-600 font-medium">+{record.lateMinutes}m</span> : "—"}</td>
+                          <td className="text-xs font-mono text-slate-400">{record.checkInIp || "—"}</td>
+                          <td className="text-xs text-slate-400 max-w-[120px] truncate" title={record.overrideNote || ""}>{record.overrideNote || "—"}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
