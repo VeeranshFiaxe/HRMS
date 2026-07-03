@@ -6,6 +6,8 @@ import { prisma } from "@/lib/prisma";
 import { getOrCreateLeaveBalance, getUsedLeavesForMonth } from "@/lib/leave-engine";
 import { LeaveRequestForm } from "@/components/employee/LeaveRequestForm";
 import { LeaveHistory } from "@/components/employee/LeaveHistory";
+import { RegularizationForm } from "@/components/employee/RegularizationForm";
+import { startOfMonth, endOfMonth } from "date-fns";
 
 export const dynamic = "force-dynamic";
 
@@ -20,6 +22,32 @@ export default async function EmployeeLeavePage() {
 
   // Leave requests
   const requests = await prisma.leaveRequest.findMany({
+    where: { userId },
+    orderBy: { createdAt: "desc" },
+    take: 50,
+  });
+
+  // Regularization rules and requests
+  const rules = await prisma.attendanceRules.findFirst();
+  const regularizationLimit = rules?.regularizationLimitPerMonth ?? 3;
+
+  const monthStart = startOfMonth(now);
+  const monthEnd = endOfMonth(now);
+
+  const usedRegularizations = await prisma.regularizationRequest.count({
+    where: {
+      userId,
+      date: {
+        gte: monthStart,
+        lte: monthEnd,
+      },
+      status: {
+        in: ["PENDING", "APPROVED"]
+      }
+    },
+  });
+
+  const regularizationRequests = await prisma.regularizationRequest.findMany({
     where: { userId },
     orderBy: { createdAt: "desc" },
     take: 50,
@@ -47,8 +75,8 @@ export default async function EmployeeLeavePage() {
   return (
     <div className="space-y-6 max-w-3xl">
       <div className="page-header">
-        <h1 className="page-title">My Leave</h1>
-        <p className="page-subtitle">Apply for leave and view your leave history</p>
+        <h1 className="page-title">My Requests</h1>
+        <p className="page-subtitle">Apply for leave, request attendance regularisation, and view history</p>
       </div>
 
       {/* Balance cards */}
@@ -87,10 +115,39 @@ export default async function EmployeeLeavePage() {
       {/* Apply for leave form */}
       <LeaveRequestForm />
 
-      {/* Leave history */}
-      <div>
-        <h2 className="font-semibold text-slate-900 mb-3">Leave History</h2>
-        <LeaveHistory requests={JSON.parse(JSON.stringify(requests))} />
+      {/* Apply for regularization form */}
+      <RegularizationForm limit={regularizationLimit} used={usedRegularizations} />
+
+      {/* History */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+          <h2 className="font-semibold text-slate-900 mb-3">Leave History</h2>
+          <LeaveHistory requests={JSON.parse(JSON.stringify(requests))} />
+        </div>
+        <div>
+          <h2 className="font-semibold text-slate-900 mb-3">Regularisation History</h2>
+          {regularizationRequests.length === 0 ? (
+            <p className="text-sm text-slate-500 card p-4">No regularisation requests found.</p>
+          ) : (
+             <div className="card divide-y divide-slate-100">
+             {regularizationRequests.map((req) => (
+                <div key={req.id} className="p-4 flex items-center justify-between">
+                   <div>
+                     <p className="text-sm font-medium">{new Date(req.date).toLocaleDateString()}</p>
+                     <p className="text-xs text-slate-500 mt-1">{req.reason}</p>
+                   </div>
+                   <span className={`badge text-xs ${
+                     req.status === 'APPROVED' ? 'bg-emerald-50 text-emerald-700' :
+                     req.status === 'REJECTED' ? 'bg-red-50 text-red-700' :
+                     'bg-amber-50 text-amber-700'
+                   }`}>
+                     {req.status}
+                   </span>
+                </div>
+             ))}
+             </div>
+          )}
+        </div>
       </div>
     </div>
   );

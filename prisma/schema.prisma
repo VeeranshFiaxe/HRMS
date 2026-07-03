@@ -64,6 +64,9 @@ enum AuditAction {
   LEAVE_REQUEST_APPROVE
   LEAVE_REQUEST_REJECT
   LEAVE_REQUEST_CANCEL
+  REGULARIZATION_REQUEST_CREATE
+  REGULARIZATION_REQUEST_APPROVE
+  REGULARIZATION_REQUEST_REJECT
 }
 
 enum EmploymentType {
@@ -133,6 +136,7 @@ model User {
   announcements      Announcement[]
   leaveRequests      LeaveRequest[]   @relation("UserLeaveRequests")
   leaveBalances      LeaveBalance[]
+  regularizationRequests RegularizationRequest[]
 
   @@map("users")
 }
@@ -339,6 +343,9 @@ model AttendanceRules {
   minHoursFullDay            Float    @default(7.5)
   minHoursHalfDay            Float    @default(4.0)
 
+  // Regularization limit
+  regularizationLimitPerMonth Int     @default(3)
+
   createdAt                  DateTime @default(now())
   updatedAt                  DateTime @updatedAt
 
@@ -425,6 +432,40 @@ model LeaveRequest {
   updatedAt    DateTime    @updatedAt
 
   @@map("leave_requests")
+}
+
+// ─────────────────────────────────────────────
+// REGULARIZATION REQUESTS
+// ─────────────────────────────────────────────
+
+enum RegularizationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+model RegularizationRequest {
+  id           String               @id @default(cuid())
+  userId       String
+  user         User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date         DateTime             @db.Date
+  
+  // Requested times
+  checkInAt    DateTime?
+  checkOutAt   DateTime?
+  
+  reason       String
+  status       RegularizationStatus @default(PENDING)
+  
+  adminNote    String?
+  approvedBy   String?
+  approvedAt   DateTime?
+
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+
+  @@map("regularization_requests")
 }
 
 // ─────────────────────────────────────────────

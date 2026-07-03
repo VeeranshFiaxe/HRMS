@@ -46,7 +46,7 @@ const navItems: NavItem[] = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { label: "Attendance", href: "/dashboard/attendance", icon: Clock },
   { label: "Calendar", href: "/dashboard/calendar", icon: Calendar },
-  { label: "Leave", href: "/dashboard/leave", icon: CalendarDays },
+  { label: "My Requests", href: "/dashboard/leave", icon: CalendarDays },
   { label: "Announcements", href: "/dashboard/announcements", icon: Megaphone },
   { label: "Profile", href: "/dashboard/profile", icon: UserCircle },
 ];
@@ -81,6 +81,7 @@ const attendanceGroup: NavGroup = {
   children: [
     { label: "Report", href: "/admin/attendance", icon: BarChart3 },
     { label: "Leave", href: "/admin/attendance/leave", icon: CalendarDays },
+    { label: "Regularisation", href: "/admin/attendance/regularisation", icon: Clock },
     { label: "Schedules", href: "/admin/schedules", icon: Clock },
     { label: "Holidays", href: "/admin/holidays", icon: PartyPopper },
   ],

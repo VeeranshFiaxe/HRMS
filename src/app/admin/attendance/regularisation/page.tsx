@@ -1,13 +1,12 @@
-// src/app/admin/attendance/leave/page.tsx
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { LeaveManagementClient } from "@/components/admin/LeaveManagementClient";
+import { RegularisationManagementClient } from "@/components/admin/RegularisationManagementClient";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminLeavePage({
+export default async function AdminRegularisationPage({
   searchParams,
 }: {
   searchParams: {
@@ -31,16 +30,18 @@ export default async function AdminLeavePage({
   if (filterUserId) where.userId = filterUserId;
   if (filterDept) where.user = { department: filterDept };
 
-  // Month filter - OR it's pending so we don't lose track of pending requests from past months
+  // Month filter - based on the `date` of the request, but always include pending requests
   where.OR = [
     {
-      fromDate: { lte: new Date(year, month, 0) },
-      toDate: { gte: new Date(year, month - 1, 1) },
+      date: {
+        gte: new Date(year, month - 1, 1),
+        lte: new Date(year, month, 0)
+      }
     },
     { status: "PENDING" }
   ];
 
-  const requests = await prisma.leaveRequest.findMany({
+  const requests = await prisma.regularizationRequest.findMany({
     where,
     include: {
       user: {
@@ -57,7 +58,7 @@ export default async function AdminLeavePage({
   });
 
   return (
-    <LeaveManagementClient
+    <RegularisationManagementClient
       requests={JSON.parse(JSON.stringify(requests))}
       employees={JSON.parse(JSON.stringify(employees))}
       year={year}

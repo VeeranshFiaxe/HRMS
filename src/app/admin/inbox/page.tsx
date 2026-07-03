@@ -4,8 +4,9 @@ import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { format } from "date-fns";
-import { Bell, Check, X, Eye, PhoneCall, Inbox } from "lucide-react";
+import { Bell, Inbox } from "lucide-react";
 import { cn } from "@/lib/utils";
+import InboxItemClient from "@/components/admin/InboxItemClient";
 
 export const dynamic = "force-dynamic";
 
@@ -107,24 +108,7 @@ export default async function AdminInboxPage() {
 
                   {/* Action buttons — only shown for PENDING items */}
                   {item.status === "PENDING" && (
-                    <div className="flex items-center gap-2 mt-3">
-                      <button className="btn-secondary text-xs py-1.5 px-3 text-emerald-700 border-emerald-200 hover:bg-emerald-50">
-                        <Check size={13} />
-                        Approve
-                      </button>
-                      <button className="btn-secondary text-xs py-1.5 px-3 text-red-600 border-red-200 hover:bg-red-50">
-                        <X size={13} />
-                        Reject
-                      </button>
-                      <button className="btn-secondary text-xs py-1.5 px-3">
-                        <Eye size={13} />
-                        View Details
-                      </button>
-                      <button className="btn-secondary text-xs py-1.5 px-3 text-slate-600">
-                        <PhoneCall size={13} />
-                        Schedule HR Call
-                      </button>
-                    </div>
+                    <InboxItemClient item={item} />
                   )}
                 </div>
               </div>

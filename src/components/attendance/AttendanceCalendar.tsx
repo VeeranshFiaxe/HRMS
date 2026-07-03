@@ -218,12 +218,22 @@ export function AttendanceCalendar({
             </div>
           )}
           {showLeaveApply && isSameMonth(tooltip.date, viewDate) && (
-            <button
-              onClick={() => handleDayClick(tooltip.date)}
-              className="mt-2 text-xs text-blue-600 hover:underline"
-            >
-              + Apply leave for this date
-            </button>
+            <div className="mt-2 flex flex-col items-start gap-1">
+              <button
+                onClick={() => handleDayClick(tooltip.date)}
+                className="text-xs text-blue-600 hover:underline"
+              >
+                + Apply leave for this date
+              </button>
+              {tooltip.record && (tooltip.record.status === 'ABSENT' || tooltip.record.status === 'HALF_DAY' || !tooltip.record.checkOutAt || tooltip.record.isLate) && (
+                 <a
+                  href={`/dashboard/leave?date=${format(tooltip.date, 'yyyy-MM-dd')}`}
+                  className="text-xs text-indigo-600 hover:underline"
+                 >
+                   + Request Regularisation
+                 </a>
+              )}
+            </div>
           )}
         </div>
       )}

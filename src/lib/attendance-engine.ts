@@ -529,6 +529,76 @@ export async function getAttendanceSummary(userId: string, year: number, month: 
   };
 }
 
+// ─── Regularization Recalculation ──────────────────────────────
+
+export async function recalculateAttendance(recordId: string) {
+  const record = await prisma.attendanceRecord.findUnique({
+    where: { id: recordId },
+  });
+  if (!record) return null;
+
+  const schedule = await getEffectiveSchedule(record.userId);
+  const office = await getOfficeSettings();
+  const timezone = office?.timezone || "Asia/Kolkata";
+  const rules = await prisma.attendanceRules.findFirst();
+  const graceMinutes = rules?.graceMinutes || 0;
+  const minHoursFullDay = rules?.minHoursFullDay ?? 7.5;
+  const minHoursHalfDay = rules?.minHoursHalfDay ?? 4.0;
+
+  let newStatus = record.status;
+  let newIsLate = record.isLate;
+  let newLateMinutes = record.lateMinutes;
+
+  if (record.checkInAt && schedule) {
+    const { status, isLate, lateMinutes } = determineAttendanceStatus(record.checkInAt, schedule, timezone, graceMinutes);
+    if (newStatus !== "ON_LEAVE" && newStatus !== "HOLIDAY" && newStatus !== "WEEKEND") {
+       newStatus = status; 
+    }
+    newIsLate = isLate;
+    newLateMinutes = lateMinutes;
+  }
+
+  let newHoursWorked = record.hoursWorked;
+  let newIsHalfDay = record.isHalfDay;
+
+  if (record.checkInAt && record.checkOutAt) {
+    const durationMs = record.checkOutAt.getTime() - record.checkInAt.getTime();
+    newHoursWorked = durationMs / (1000 * 60 * 60);
+
+    if (newStatus !== "ON_LEAVE" && newStatus !== "HOLIDAY" && newStatus !== "WEEKEND") {
+      if (newHoursWorked < minHoursHalfDay) {
+        newStatus = "ABSENT";
+        newIsHalfDay = false;
+      } else if (newHoursWorked < minHoursFullDay) {
+        newStatus = "HALF_DAY";
+        newIsHalfDay = true;
+      } else {
+         if (newStatus === "ABSENT" || newStatus === "HALF_DAY") {
+            newStatus = newIsLate ? "LATE" : "PRESENT";
+            newIsHalfDay = false;
+         }
+      }
+    }
+  }
+
+  const updated = await prisma.attendanceRecord.update({
+    where: { id: record.id },
+    data: {
+      status: newStatus,
+      isLate: newIsLate,
+      lateMinutes: newLateMinutes,
+      isHalfDay: newIsHalfDay,
+      hoursWorked: newHoursWorked != null ? Math.round(newHoursWorked * 100) / 100 : null,
+    },
+  });
+
+  if (updated.isLate) {
+    await checkLateStreakPenalty(updated.userId, updated.date);
+  }
+
+  return updated;
+}
+
 // ─── Audit log helper ─────────────────────────────────────────
 
 async function createAuditLog(
