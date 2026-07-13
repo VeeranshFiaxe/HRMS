@@ -4,6 +4,8 @@ import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Calendar, Clock, Edit2 } from "lucide-react";
 
+import toast from "react-hot-toast";
+
 export function RegularizationForm({ limit, used }: { limit: number, used: number }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -67,7 +69,7 @@ export function RegularizationForm({ limit, used }: { limit: number, used: numbe
       }
       
       router.refresh();
-      alert("Regularisation request submitted successfully!");
+      toast.success("Regularisation request submitted successfully!");
     } catch (err: any) {
       setError(err.message);
     } finally {

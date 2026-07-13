@@ -2,6 +2,7 @@
 // Core attendance logic — validation, status calculation, streak detection
 
 import { prisma } from "@/lib/prisma";
+import { AttendanceStatus } from "@prisma/client";
 import {
   isWithinGeofence,
   isIpAllowed,
@@ -467,6 +468,19 @@ export async function getAttendanceSummary(userId: string, year: number, month: 
     where: { date: { gte: start, lte: end } },
   });
 
+  const leaves = await prisma.leaveRequest.findMany({
+    where: {
+      userId,
+      status: "APPROVED",
+      fromDate: { lte: end },
+      toDate: { gte: start },
+    },
+  });
+
+  const now = new Date();
+  const today = startOfDay(now);
+  const missingDates: Date[] = [];
+
   // Count working days
   let totalWorkingDays = 0;
   const cursor = new Date(start);
@@ -476,8 +490,39 @@ export async function getAttendanceSummary(userId: string, year: number, month: 
       (h) => h.date.toDateString() === cursor.toDateString()
     );
     const dayName = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"][dow] as keyof typeof schedule;
-    if (!isHol && schedule[dayName]) totalWorkingDays++;
+    
+    if (!isHol && schedule[dayName]) {
+      totalWorkingDays++;
+
+      if (cursor < today) {
+        const isOnLeave = leaves.some(l => cursor >= l.fromDate && cursor <= l.toDate);
+        const hasRecord = records.some((r) => new Date(r.date).toDateString() === cursor.toDateString());
+        if (!hasRecord && !isOnLeave) {
+          missingDates.push(new Date(cursor));
+        }
+      }
+    }
     cursor.setDate(cursor.getDate() + 1);
+  }
+
+  if (missingDates.length > 0) {
+    const newAbsences = missingDates.map(date => ({
+      userId,
+      date,
+      status: AttendanceStatus.ABSENT,
+      overrideNote: "Auto-backfilled missing attendance",
+    }));
+    await prisma.attendanceRecord.createMany({ data: newAbsences, skipDuplicates: true });
+    
+    const updatedRecords = await prisma.attendanceRecord.findMany({
+      where: {
+        userId,
+        date: { gte: start, lte: end },
+      },
+      orderBy: { date: "asc" },
+    });
+    records.length = 0;
+    records.push(...updatedRecords);
   }
 
   const presentDays = records.filter((r) => r.status === "PRESENT").length;

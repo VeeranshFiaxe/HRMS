@@ -25,6 +25,7 @@ export default async function ProfilePage() {
   if (!user) redirect("/auth/login");
 
   const companySchedule = await prisma.companySchedule.findFirst();
+  const attendanceRules = await prisma.attendanceRules.findFirst();
 
   const now = new Date();
   const year = now.getFullYear();
@@ -115,6 +116,14 @@ export default async function ProfilePage() {
       paidLeaveDaysPerMonth: user.salaryRules.paidLeaveDaysPerMonth,
     } : null,
     payrollPreview,
+    attendanceRules: attendanceRules ? {
+      graceMinutes: attendanceRules.graceMinutes,
+      minHoursFullDay: attendanceRules.minHoursFullDay,
+      minHoursHalfDay: attendanceRules.minHoursHalfDay,
+      lateStreakDays: attendanceRules.lateStreakDays,
+      lateStreakPenalty: attendanceRules.lateStreakPenalty,
+      regularisationLimit: attendanceRules.regularizationLimitPerMonth,
+    } : null,
   };
 
   return (

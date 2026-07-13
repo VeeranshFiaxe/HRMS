@@ -55,7 +55,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: { m
     <div className="space-y-6 max-w-lg">
       <div className="page-header">
         <h1 className="page-title">Attendance Calendar</h1>
-        <p className="page-subtitle">Visual overview of your attendance — click a date to apply leave</p>
+        <p className="page-subtitle">Visual overview of your attendance — click a date to apply for leave or regularisation</p>
       </div>
       <AttendanceCalendar
         records={summary.records.map((r: any) => ({

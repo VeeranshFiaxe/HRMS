@@ -21,6 +21,7 @@ interface Props {
     lateStreakPenalty: string;
     graceMinutes: number;
     autoAbsentAfter: string;
+    autoCheckoutAfter: string;
     minHoursFullDay: number;
     minHoursHalfDay: number;
   } | null;
@@ -51,6 +52,7 @@ export function OfficeSettingsForm({ settings, rules }: Props) {
     lateStreakPenalty: rules?.lateStreakPenalty || "HALF_DAY",
     graceMinutes: rules?.graceMinutes?.toString() || "0",
     autoAbsentAfter: rules?.autoAbsentAfter || "15:00",
+    autoCheckoutAfter: rules?.autoCheckoutAfter || "21:00",
     minHoursFullDay: rules?.minHoursFullDay?.toString() || "8",
     minHoursHalfDay: rules?.minHoursHalfDay?.toString() || "4",
   });
@@ -123,6 +125,7 @@ export function OfficeSettingsForm({ settings, rules }: Props) {
           lateStreakPenalty: attendRules.lateStreakPenalty,
           graceMinutes: parseInt(attendRules.graceMinutes),
           autoAbsentAfter: attendRules.autoAbsentAfter,
+          autoCheckoutAfter: attendRules.autoCheckoutAfter,
           minHoursFullDay: parseFloat(attendRules.minHoursFullDay),
           minHoursHalfDay: parseFloat(attendRules.minHoursHalfDay),
         }),
@@ -306,6 +309,10 @@ export function OfficeSettingsForm({ settings, rules }: Props) {
             <div>
               <label className="label">Auto-Absent After</label>
               <input type="time" className="input" value={attendRules.autoAbsentAfter} onChange={e => setAttendRules(r => ({ ...r, autoAbsentAfter: e.target.value }))} />
+            </div>
+            <div>
+              <label className="label">Auto-Checkout After</label>
+              <input type="time" className="input" value={attendRules.autoCheckoutAfter} onChange={e => setAttendRules(r => ({ ...r, autoCheckoutAfter: e.target.value }))} />
             </div>
             <div>
               <label className="label">Min Hours (Full Day)</label>

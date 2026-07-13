@@ -26,6 +26,7 @@ import {
   CalendarDays,
   Wallet,
   ChevronDown,
+  UserPlus,
 } from "lucide-react";
 
 interface NavItem {
@@ -62,6 +63,7 @@ const adminSpaceItems: NavItem[] = [
 const adminTopItems: NavItem[] = [
   { label: "Overview", href: "/admin", icon: LayoutDashboard },
   { label: "Employees", href: "/admin/employees", icon: Users },
+  { label: "Onboarding", href: "/admin/onboarding", icon: UserPlus },
 ];
 
 const adminBottomItems: NavItem[] = [

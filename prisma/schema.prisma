@@ -1,6 +1,3 @@
-// HRMS Database Schema
-// PostgreSQL via Prisma ORM
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -10,9 +7,369 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// ─────────────────────────────────────────────
-// ENUMS
-// ─────────────────────────────────────────────
+model User {
+  id                     String                  @id @default(cuid())
+  email                  String                  @unique
+  name                   String
+  password               String?
+  role                   UserRole                @default(EMPLOYEE)
+  employmentType         EmploymentType          @default(FULL_TIME)
+  department             String?
+  designation            String?
+  phone                  String?
+  avatar                 String?
+  joiningDate            DateTime                @default(now())
+  isActive               Boolean                 @default(true)
+  googleId               String?                 @unique
+  emailVerified          DateTime?
+  resetToken             String?
+  resetTokenExpiry       DateTime?
+  createdAt              DateTime                @default(now())
+  updatedAt              DateTime                @updatedAt
+  timeFormat             String                  @default("24h")
+  companyScheduleId      String?
+  salaryRulesId          String?
+  dateOfBirth            DateTime?               @db.Date
+  announcements          Announcement[]
+  attendanceRecords      AttendanceRecord[]
+  auditLogs              AuditLog[]
+  documents              Document[]
+  customSchedule         EmployeeSchedule?
+  leaveBalances          LeaveBalance[]
+  leaveRequests          LeaveRequest[]          @relation("UserLeaveRequests")
+  onboardingForms        OnboardingForm[]
+  regularizationRequests RegularizationRequest[]
+  salaryRuleOverride     SalaryRuleOverride?
+  sessions               Session[]
+  companySchedule        CompanySchedule?        @relation(fields: [companyScheduleId], references: [id])
+  salaryRules            SalaryRules?            @relation(fields: [salaryRulesId], references: [id])
+
+  @@map("users")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  rememberMe   Boolean  @default(false)
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+model AttendanceRecord {
+  id               String           @id @default(cuid())
+  userId           String
+  date             DateTime         @db.Date
+  checkInAt        DateTime?
+  checkOutAt       DateTime?
+  checkInIp        String?
+  checkOutIp       String?
+  checkInLat       Float?
+  checkInLng       Float?
+  checkOutLat      Float?
+  checkOutLng      Float?
+  checkInIpValid   Boolean?
+  checkInGeoValid  Boolean?
+  checkOutIpValid  Boolean?
+  checkOutGeoValid Boolean?
+  status           AttendanceStatus @default(PRESENT)
+  isLate           Boolean          @default(false)
+  isHalfDay        Boolean          @default(false)
+  lateMinutes      Int              @default(0)
+  overriddenBy     String?
+  overrideNote     String?
+  overriddenAt     DateTime?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  hoursWorked      Float?
+  user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@map("attendance_records")
+}
+
+model CompanySchedule {
+  id                String   @id @default(cuid())
+  name              String   @default("Default Schedule")
+  startTime         String   @default("11:00")
+  endTime           String   @default("18:00")
+  lateAfter         String   @default("11:15")
+  halfDayAfter      String   @default("14:00")
+  monday            Boolean  @default(true)
+  tuesday           Boolean  @default(true)
+  wednesday         Boolean  @default(true)
+  thursday          Boolean  @default(true)
+  friday            Boolean  @default(true)
+  saturday          Boolean  @default(false)
+  sunday            Boolean  @default(false)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  isDefault         Boolean  @default(false)
+  overrideLateAfter Boolean  @default(false)
+  users             User[]
+
+  @@map("company_schedules")
+}
+
+model EmployeeSchedule {
+  id                String   @id @default(cuid())
+  userId            String   @unique
+  startTime         String
+  endTime           String
+  lateAfter         String
+  halfDayAfter      String
+  monday            Boolean  @default(true)
+  tuesday           Boolean  @default(true)
+  wednesday         Boolean  @default(true)
+  thursday          Boolean  @default(true)
+  friday            Boolean  @default(true)
+  saturday          Boolean  @default(false)
+  sunday            Boolean  @default(false)
+  note              String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  overrideLateAfter Boolean  @default(false)
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("employee_schedules")
+}
+
+model Holiday {
+  id         String   @id @default(cuid())
+  name       String
+  date       DateTime @unique @db.Date
+  isOptional Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@map("holidays")
+}
+
+model OfficeSettings {
+  id              String   @id @default(cuid())
+  name            String   @default("Main Office")
+  latitude        Float    @default(0)
+  longitude       Float    @default(0)
+  radiusMeters    Float    @default(200)
+  geofenceEnabled Boolean  @default(true)
+  allowedIps      Json     @default("[]")
+  ipCheckEnabled  Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  timezone        String   @default("Asia/Kolkata")
+
+  @@map("office_settings")
+}
+
+model AttendanceRules {
+  id                          String   @id @default(cuid())
+  lateStreakDays              Int      @default(3)
+  lateStreakPenalty           String   @default("HALF_DAY")
+  graceMinutes                Int      @default(0)
+  autoAbsentAfter             String   @default("15:00")
+  autoCheckoutAfter           String   @default("21:00")
+  minHoursFullDay             Float    @default(7.5)
+  minHoursHalfDay             Float    @default(4.0)
+  createdAt                   DateTime @default(now())
+  updatedAt                   DateTime @updatedAt
+  regularizationLimitPerMonth Int      @default(3)
+
+  @@map("attendance_rules")
+}
+
+model SalaryRules {
+  id                     String   @id @default(cuid())
+  halfDayDeductionFactor Float    @default(0.5)
+  absentDeductionFactor  Float    @default(1.0)
+  paidLeaveDaysPerMonth  Int      @default(1)
+  note                   String?
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+  baseSalary             Float    @default(0)
+  isDefault              Boolean  @default(false)
+  name                   String   @default("Default Salary Rule")
+  lateDeductionFactor    Float    @default(0.33)
+  users                  User[]
+
+  @@map("salary_rules")
+}
+
+model SalaryRuleOverride {
+  id                     String   @id @default(cuid())
+  userId                 String   @unique
+  baseSalary             Float?
+  halfDayDeductionFactor Float?
+  absentDeductionFactor  Float?
+  paidLeaveDaysPerMonth  Int?
+  customFormula          String?
+  note                   String?
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+  lateDeductionFactor    Float?
+  user                   User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("salary_rule_overrides")
+}
+
+model LeaveRequest {
+  id          String      @id @default(cuid())
+  userId      String
+  fromDate    DateTime    @db.Date
+  toDate      DateTime    @db.Date
+  reason      String?
+  approvedBy  String?
+  approvedAt  DateTime?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  adminNote   String?
+  cancelledAt DateTime?
+  cancelledBy String?
+  isPaid      Boolean     @default(true)
+  leaveType   LeaveType   @default(CASUAL)
+  totalDays   Int         @default(1)
+  status      LeaveStatus @default(PENDING)
+  user        User        @relation("UserLeaveRequests", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("leave_requests")
+}
+
+model RegularizationRequest {
+  id         String               @id @default(cuid())
+  userId     String
+  date       DateTime             @db.Date
+  checkInAt  DateTime?
+  checkOutAt DateTime?
+  reason     String
+  status     RegularizationStatus @default(PENDING)
+  adminNote  String?
+  approvedBy String?
+  approvedAt DateTime?
+  createdAt  DateTime             @default(now())
+  updatedAt  DateTime             @updatedAt
+  user       User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("regularization_requests")
+}
+
+model LeaveBalance {
+  id        String   @id @default(cuid())
+  userId    String
+  year      Int
+  month     Int?
+  allocated Float    @default(0)
+  used      Float    @default(0)
+  carried   Float    @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, year, month])
+  @@map("leave_balances")
+}
+
+model AuditLog {
+  id          String      @id @default(cuid())
+  userId      String?
+  action      AuditAction
+  description String
+  metadata    Json?
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime    @default(now())
+  user        User?       @relation(fields: [userId], references: [id])
+
+  @@map("audit_logs")
+}
+
+model Announcement {
+  id                String    @id @default(cuid())
+  title             String
+  content           String
+  isActive          Boolean   @default(true)
+  reflectOnCalendar Boolean   @default(false)
+  eventDate         DateTime? @db.Date
+  eventName         String?
+  createdById       String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  pinnedUntil       DateTime?
+  createdBy         User?     @relation(fields: [createdById], references: [id])
+
+  @@map("announcements")
+}
+
+model InboxItem {
+  id          String   @id @default(cuid())
+  type        String
+  title       String
+  description String?
+  status      String   @default("PENDING")
+  relatedId   String?
+  metadata    Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("inbox_items")
+}
+
+model OnboardingForm {
+  id             String                 @id @default(cuid())
+  title          String
+  description    String?
+  fields         Json
+  status         OnboardingFormStatus   @default(DRAFT)
+  googleSheetUrl String?
+  createdById    String
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+  createdBy      User                   @relation(fields: [createdById], references: [id])
+  submissions    OnboardingSubmission[]
+
+  @@map("onboarding_forms")
+}
+
+model OnboardingSubmission {
+  id             String           @id @default(cuid())
+  formId         String
+  candidateName  String
+  candidateEmail String
+  status         OnboardingStatus @default(PENDING)
+  data           Json
+  adminNotes     String?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  documents      Document[]
+  form           OnboardingForm   @relation(fields: [formId], references: [id], onDelete: Cascade)
+
+  @@map("onboarding_submissions")
+}
+
+model Document {
+  id           String                @id @default(cuid())
+  name         String
+  mimeType     String
+  data         Bytes
+  size         Int
+  submissionId String?
+  userId       String?
+  createdAt    DateTime              @default(now())
+  updatedAt    DateTime              @updatedAt
+  submission   OnboardingSubmission? @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  user         User?                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("documents")
+}
 
 enum UserRole {
   ADMIN
@@ -90,354 +447,6 @@ enum LeaveType {
   UNPAID
 }
 
-// ─────────────────────────────────────────────
-// USER / EMPLOYEE
-// ─────────────────────────────────────────────
-
-model User {
-  id                String         @id @default(cuid())
-  email             String         @unique
-  name              String
-  password          String?        // null for OAuth users
-  role              UserRole       @default(EMPLOYEE)
-  employmentType    EmploymentType @default(FULL_TIME)
-  department        String?
-  designation       String?
-  phone             String?
-  avatar            String?
-  joiningDate       DateTime       @default(now())
-  dateOfBirth       DateTime?      @db.Date
-  isActive          Boolean        @default(true)
-  timeFormat        String         @default("24h")
-
-  // OAuth
-  googleId          String?        @unique
-
-  // Email verification
-  emailVerified     DateTime?
-
-  // Password reset
-  resetToken        String?
-  resetTokenExpiry  DateTime?
-
-  createdAt         DateTime       @default(now())
-  updatedAt         DateTime       @updatedAt
-
-  // Relations
-  attendanceRecords  AttendanceRecord[]
-  customSchedule     EmployeeSchedule?
-  companyScheduleId  String?
-  companySchedule    CompanySchedule? @relation(fields: [companyScheduleId], references: [id], onDelete: SetNull)
-  salaryRulesId      String?
-  salaryRules        SalaryRules?     @relation(fields: [salaryRulesId], references: [id], onDelete: SetNull)
-  salaryRuleOverride SalaryRuleOverride?
-  sessions           Session[]
-  auditLogs          AuditLog[]
-  announcements      Announcement[]
-  leaveRequests      LeaveRequest[]   @relation("UserLeaveRequests")
-  leaveBalances      LeaveBalance[]
-  regularizationRequests RegularizationRequest[]
-
-  @@map("users")
-}
-
-// ─────────────────────────────────────────────
-// SESSION (next-auth compatible)
-// ─────────────────────────────────────────────
-
-model Session {
-  id           String   @id @default(cuid())
-  sessionToken String   @unique
-  userId       String
-  expires      DateTime
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  rememberMe   Boolean  @default(false)
-
-  @@map("sessions")
-}
-
-model VerificationToken {
-  identifier String
-  token      String   @unique
-  expires    DateTime
-
-  @@unique([identifier, token])
-  @@map("verification_tokens")
-}
-
-// ─────────────────────────────────────────────
-// ATTENDANCE RECORD
-// ─────────────────────────────────────────────
-
-model AttendanceRecord {
-  id                String           @id @default(cuid())
-  userId            String
-  date              DateTime         @db.Date  // just the date, no time
-
-  // Server timestamps (NEVER from browser)
-  checkInAt         DateTime?        // exact server time of check-in
-  checkOutAt        DateTime?        // exact server time of check-out
-
-  // Work hours (calculated at checkout)
-  hoursWorked       Float?           // null if no checkout yet
-
-  // Request metadata
-  checkInIp         String?
-  checkOutIp        String?
-  checkInLat        Float?
-  checkInLng        Float?
-  checkOutLat       Float?
-  checkOutLng       Float?
-
-  // Validation
-  checkInIpValid    Boolean?
-  checkInGeoValid   Boolean?
-  checkOutIpValid   Boolean?
-  checkOutGeoValid  Boolean?
-
-  // Computed status
-  status            AttendanceStatus @default(PRESENT)
-  isLate            Boolean          @default(false)
-  isHalfDay         Boolean          @default(false)
-  lateMinutes       Int              @default(0)
-
-  // Admin override
-  overriddenBy      String?
-  overrideNote      String?
-  overriddenAt      DateTime?
-
-  // Audit
-  createdAt         DateTime         @default(now())
-  updatedAt         DateTime         @updatedAt
-
-  user              User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, date])  // one record per employee per day
-  @@map("attendance_records")
-}
-
-// ─────────────────────────────────────────────
-// COMPANY SCHEDULE (default)
-// ─────────────────────────────────────────────
-
-model CompanySchedule {
-  id                String   @id @default(cuid())
-  name              String   @default("Default Schedule")
-  isDefault         Boolean  @default(false)
-
-  startTime         String   @default("11:00")  // HH:mm
-  endTime           String   @default("18:00")
-  overrideLateAfter Boolean  @default(false)
-  lateAfter         String   @default("11:15")  // used only if overrideLateAfter is true
-  halfDayAfter      String   @default("14:00")  // after this = HALF_DAY
-
-  // Working days (true = working)
-  monday            Boolean  @default(true)
-  tuesday           Boolean  @default(true)
-  wednesday         Boolean  @default(true)
-  thursday          Boolean  @default(true)
-  friday            Boolean  @default(true)
-  saturday          Boolean  @default(false)
-  sunday            Boolean  @default(false)
-
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-
-  users             User[]
-
-  @@map("company_schedules")
-}
-
-// ─────────────────────────────────────────────
-// EMPLOYEE-SPECIFIC SCHEDULE OVERRIDE
-// ─────────────────────────────────────────────
-
-model EmployeeSchedule {
-  id                String   @id @default(cuid())
-  userId            String   @unique
-
-  startTime         String
-  endTime           String
-  overrideLateAfter Boolean  @default(false)
-  lateAfter         String
-  halfDayAfter      String
-
-  monday            Boolean  @default(true)
-  tuesday           Boolean  @default(true)
-  wednesday         Boolean  @default(true)
-  thursday          Boolean  @default(true)
-  friday            Boolean  @default(true)
-  saturday          Boolean  @default(false)
-  sunday            Boolean  @default(false)
-
-  note              String?  // e.g. "Intern schedule"
-
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-
-  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("employee_schedules")
-}
-
-// ─────────────────────────────────────────────
-// HOLIDAYS
-// ─────────────────────────────────────────────
-
-model Holiday {
-  id          String   @id @default(cuid())
-  name        String
-  date        DateTime @db.Date
-  isOptional  Boolean  @default(false)  // optional leave vs mandatory holiday
-
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  @@unique([date])
-  @@map("holidays")
-}
-
-// ─────────────────────────────────────────────
-// OFFICE SETTINGS (Geofence + IP)
-// ─────────────────────────────────────────────
-
-model OfficeSettings {
-  id              String   @id @default(cuid())
-  name            String   @default("Main Office")
-  timezone        String   @default("Asia/Kolkata")
-
-  // Geofence
-  latitude        Float    @default(0)
-  longitude       Float    @default(0)
-  radiusMeters    Float    @default(200)
-  geofenceEnabled Boolean  @default(true)
-
-  // IP allowlist (stored as JSON array of strings)
-  allowedIps      Json     @default("[]")   // ["192.168.1.0/24", "203.0.113.5"]
-  ipCheckEnabled  Boolean  @default(true)
-
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  @@map("office_settings")
-}
-
-// ─────────────────────────────────────────────
-// ATTENDANCE RULES
-// ─────────────────────────────────────────────
-
-model AttendanceRules {
-  id                         String   @id @default(cuid())
-
-  // Late streak penalty
-  lateStreakDays             Int      @default(3)    // consecutive late days before penalty
-  lateStreakPenalty          String   @default("HALF_DAY")  // "HALF_DAY" | "WARNING" | "NONE"
-
-  // Grace period before absent
-  graceMinutes               Int      @default(0)
-
-  // Auto-mark absent if no check-in by this time (24h format "HH:mm")
-  autoAbsentAfter            String   @default("15:00")
-
-  // Minimum hours for full day / half day (configurable)
-  minHoursFullDay            Float    @default(7.5)
-  minHoursHalfDay            Float    @default(4.0)
-
-  // Regularization limit
-  regularizationLimitPerMonth Int     @default(3)
-
-  createdAt                  DateTime @default(now())
-  updatedAt                  DateTime @updatedAt
-
-  @@map("attendance_rules")
-}
-
-// ─────────────────────────────────────────────
-// SALARY RULES
-// ─────────────────────────────────────────────
-
-model SalaryRules {
-  id                      String   @id @default(cuid())
-  name                    String   @default("Default Salary Rule")
-  isDefault               Boolean  @default(false)
-
-  // Default Base Salary
-  baseSalary              Float    @default(0)
-
-  // Formula: baseSalary * (daysWorked / payableWorkingDays)
-  // Deductions for late / half day
-  halfDayDeductionFactor  Float    @default(0.5)   // half day = 0.5 day deducted
-  lateDeductionFactor     Float    @default(0.33)  // late = 0.33 day deducted per late day
-  absentDeductionFactor   Float    @default(1.0)   // absent = 1 day deducted
-
-  // Paid leave entitlement
-  paidLeaveDaysPerMonth   Int      @default(1)
-
-  note                    String?
-
-  createdAt               DateTime @default(now())
-  updatedAt               DateTime @updatedAt
-
-  users                   User[]
-
-  @@map("salary_rules")
-}
-
-// ─────────────────────────────────────────────
-// PER-EMPLOYEE SALARY OVERRIDE
-// ─────────────────────────────────────────────
-
-model SalaryRuleOverride {
-  id                      String   @id @default(cuid())
-  userId                  String   @unique
-
-  baseSalary              Float?
-  halfDayDeductionFactor  Float?
-  lateDeductionFactor     Float?
-  absentDeductionFactor   Float?
-  paidLeaveDaysPerMonth   Int?
-  customFormula           String?  // future: expression string
-  note                    String?
-
-  createdAt               DateTime @default(now())
-  updatedAt               DateTime @updatedAt
-
-  user                    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("salary_rule_overrides")
-}
-
-// ─────────────────────────────────────────────
-// LEAVE REQUESTS
-// ─────────────────────────────────────────────
-
-model LeaveRequest {
-  id           String      @id @default(cuid())
-  userId       String
-  user         User        @relation("UserLeaveRequests", fields: [userId], references: [id], onDelete: Cascade)
-  fromDate     DateTime    @db.Date
-  toDate       DateTime    @db.Date
-  totalDays    Int         @default(1)
-  reason       String?
-  leaveType    LeaveType   @default(CASUAL)
-  isPaid       Boolean     @default(true)
-  status       LeaveStatus @default(PENDING)
-  adminNote    String?
-  approvedBy   String?
-  approvedAt   DateTime?
-  cancelledBy  String?
-  cancelledAt  DateTime?
-
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
-
-  @@map("leave_requests")
-}
-
-// ─────────────────────────────────────────────
-// REGULARIZATION REQUESTS
-// ─────────────────────────────────────────────
-
 enum RegularizationStatus {
   PENDING
   APPROVED
@@ -445,113 +454,14 @@ enum RegularizationStatus {
   CANCELLED
 }
 
-model RegularizationRequest {
-  id           String               @id @default(cuid())
-  userId       String
-  user         User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
-  date         DateTime             @db.Date
-  
-  // Requested times
-  checkInAt    DateTime?
-  checkOutAt   DateTime?
-  
-  reason       String
-  status       RegularizationStatus @default(PENDING)
-  
-  adminNote    String?
-  approvedBy   String?
-  approvedAt   DateTime?
-
-  createdAt    DateTime             @default(now())
-  updatedAt    DateTime             @updatedAt
-
-  @@map("regularization_requests")
+enum OnboardingFormStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
 }
 
-// ─────────────────────────────────────────────
-// LEAVE BALANCE
-// ─────────────────────────────────────────────
-
-model LeaveBalance {
-  id          String   @id @default(cuid())
-  userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  year        Int
-  // month: null = annual (full-time); set = monthly tracking (intern/part-time)
-  month       Int?
-  allocated   Float    @default(0)
-  used        Float    @default(0)
-  carried     Float    @default(0)  // rolled over from prior period
-
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  @@unique([userId, year, month])
-  @@map("leave_balances")
-}
-
-// ─────────────────────────────────────────────
-// AUDIT LOGS
-// ─────────────────────────────────────────────
-
-model AuditLog {
-  id          String      @id @default(cuid())
-  userId      String?
-  action      AuditAction
-  description String
-  metadata    Json?       // arbitrary extra data
-  ipAddress   String?
-  userAgent   String?
-
-  createdAt   DateTime    @default(now())
-
-  user        User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
-
-  @@map("audit_logs")
-}
-
-// ─────────────────────────────────────────────
-// ANNOUNCEMENTS
-// ─────────────────────────────────────────────
-
-model Announcement {
-  id                 String    @id @default(cuid())
-  title              String
-  content            String
-  isActive           Boolean   @default(true)
-
-  // Calendar reflection
-  reflectOnCalendar  Boolean   @default(false)
-  eventDate          DateTime? @db.Date
-  eventName          String?
-
-  // Dashboard pinning
-  pinnedUntil        DateTime?
-
-  createdById        String?
-  createdBy          User?     @relation(fields: [createdById], references: [id], onDelete: SetNull)
-
-  createdAt          DateTime  @default(now())
-  updatedAt          DateTime  @updatedAt
-
-  @@map("announcements")
-}
-
-// ─────────────────────────────────────────────
-// INBOX ITEMS (approval notifications)
-// ─────────────────────────────────────────────
-
-model InboxItem {
-  id          String   @id @default(cuid())
-  type        String   // e.g. "LEAVE_REQUEST", "ONBOARDING", "OTHER"
-  title       String
-  description String?
-  status      String   @default("PENDING")  // PENDING | APPROVED | REJECTED | CANCELLED
-  relatedId   String?  // foreign key to related entity (e.g. LeaveRequest.id)
-  metadata    Json?    // extra data for the item
-
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  @@map("inbox_items")
+enum OnboardingStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }

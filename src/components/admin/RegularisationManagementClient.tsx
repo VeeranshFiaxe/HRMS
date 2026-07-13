@@ -52,6 +52,8 @@ export function RegularisationManagementClient({ requests, employees, year, mont
   const [localStatus, setLocalStatus] = useState(filterStatus);
   const [localUserId, setLocalUserId] = useState(filterUserId);
   const [localDept, setLocalDept] = useState(filterDept);
+  const [localMonth, setLocalMonth] = useState(month);
+  const [localYear, setLocalYear] = useState(year);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const departments = useMemo(() => {
@@ -61,7 +63,7 @@ export function RegularisationManagementClient({ requests, employees, year, mont
 
   const applyFilters = () => {
     const params = new URLSearchParams({
-      year: String(year), month: String(month),
+      year: String(localYear), month: String(localMonth),
       ...(localStatus && { status: localStatus }),
       ...(localUserId && { userId: localUserId }),
       ...(localDept && { dept: localDept }),
@@ -107,6 +109,18 @@ export function RegularisationManagementClient({ requests, employees, year, mont
       {/* Filters */}
       <div className="card p-4">
         <div className="flex flex-wrap gap-3 items-end">
+          <div>
+            <label className="label text-xs">Month</label>
+            <select className="input !w-auto text-sm" value={localMonth} onChange={e => setLocalMonth(Number(e.target.value))}>
+              {MONTHS.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="label text-xs">Year</label>
+            <select className="input !w-auto text-sm" value={localYear} onChange={e => setLocalYear(Number(e.target.value))}>
+              {[year - 1, year, year + 1].map(y => <option key={y} value={y}>{y}</option>)}
+            </select>
+          </div>
           <div>
             <label className="label text-xs">Status</label>
             <select className="input !w-auto text-sm" value={localStatus} onChange={e => setLocalStatus(e.target.value)}>

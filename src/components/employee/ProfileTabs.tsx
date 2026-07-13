@@ -61,6 +61,14 @@ interface ProfileData {
     month: number;
     year: number;
   } | null;
+  attendanceRules: {
+    graceMinutes: number;
+    minHoursFullDay: number;
+    minHoursHalfDay: number;
+    lateStreakDays: number;
+    lateStreakPenalty: string;
+    regularisationLimit: number | null;
+  } | null;
 }
 
 const TABS = [
@@ -182,6 +190,39 @@ export function ProfileTabs({ data }: { data: ProfileData }) {
               <span className="font-bold text-purple-600">{data.attendanceSummary.totalHoursWorked}h</span>
             </div>
           </div>
+
+          {/* Attendance Rules Card */}
+          {data.attendanceRules && (
+            <div className="card overflow-hidden">
+              <div className="px-5 py-3 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
+                <h3 className="font-semibold text-slate-900 text-sm">Attendance Policies</h3>
+              </div>
+              <div className="p-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="flex justify-between items-center py-2 border-b border-slate-50 last:border-0">
+                  <span className="text-sm text-slate-500">Late Grace Period</span>
+                  <span className="text-sm font-medium">{data.attendanceRules.graceMinutes} mins</span>
+                </div>
+                <div className="flex justify-between items-center py-2 border-b border-slate-50 last:border-0">
+                  <span className="text-sm text-slate-500">Late Streak Penalty</span>
+                  <span className="text-sm font-medium">
+                    {data.attendanceRules.lateStreakPenalty.replace("_", " ")} after {data.attendanceRules.lateStreakDays} days
+                  </span>
+                </div>
+                <div className="flex justify-between items-center py-2 border-b border-slate-50 last:border-0">
+                  <span className="text-sm text-slate-500">Min. Hours for Full Day</span>
+                  <span className="text-sm font-medium">{data.attendanceRules.minHoursFullDay}h</span>
+                </div>
+                <div className="flex justify-between items-center py-2 border-b border-slate-50 last:border-0">
+                  <span className="text-sm text-slate-500">Min. Hours for Half Day</span>
+                  <span className="text-sm font-medium">{data.attendanceRules.minHoursHalfDay}h</span>
+                </div>
+                <div className="flex justify-between items-center py-2 border-b border-slate-50 last:border-0">
+                  <span className="text-sm text-slate-500">Max Regularisations</span>
+                  <span className="text-sm font-medium">{data.attendanceRules.regularisationLimit ?? "Unlimited"} / month</span>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

@@ -30,6 +30,22 @@ export default async function AdminInboxPage() {
     orderBy: { createdAt: "desc" },
   });
 
+  // Fetch related users to get their email
+  const augmentedItems = await Promise.all(items.map(async (item) => {
+    let userEmail = null;
+    let userName = null;
+    if (item.type === "REGULARIZATION_REQUEST" && item.relatedId) {
+      const req = await prisma.regularizationRequest.findUnique({ where: { id: item.relatedId }, include: { user: true }});
+      userEmail = req?.user?.email;
+      userName = req?.user?.name;
+    } else if (item.type === "LEAVE_REQUEST" && item.relatedId) {
+      const req = await prisma.leaveRequest.findUnique({ where: { id: item.relatedId }, include: { user: true }});
+      userEmail = req?.user?.email;
+      userName = req?.user?.name;
+    }
+    return { ...item, user: { email: userEmail, name: userName } };
+  }));
+
   const pendingCount = items.filter((i) => i.status === "PENDING").length;
 
   return (
@@ -79,7 +95,9 @@ export default async function AdminInboxPage() {
       {/* Items list */}
       {items.length > 0 && (
         <div className="card overflow-hidden divide-y divide-slate-100">
-          {items.map((item) => (
+          {items.map((rawItem) => {
+            const item = augmentedItems.find(i => i.id === rawItem.id) || rawItem;
+            return (
             <div key={item.id} className="px-5 py-4">
               <div className="flex items-start gap-3">
                 <div className="w-9 h-9 rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0 mt-0.5">
@@ -113,7 +131,8 @@ export default async function AdminInboxPage() {
                 </div>
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

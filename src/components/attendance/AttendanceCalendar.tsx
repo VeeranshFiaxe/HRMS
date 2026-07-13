@@ -64,6 +64,7 @@ export function AttendanceCalendar({
   const [viewDate, setViewDate] = useState(new Date(year, month - 1, 1));
   const [tooltip, setTooltip] = useState<{ record: any; date: Date; dayEvents: typeof events; dayLeaves: LeaveEvent[] } | null>(null);
   const [showLeaveForm, setShowLeaveForm] = useState(false);
+  const [showApplyDropdown, setShowApplyDropdown] = useState(false);
   const [prefillDate, setPrefillDate] = useState<string | undefined>();
 
   const monthStart = startOfMonth(viewDate);
@@ -102,12 +103,40 @@ export function AttendanceCalendar({
         <h3 className="font-semibold text-slate-900">{format(viewDate, "MMMM yyyy")}</h3>
         <div className="flex gap-1 items-center">
           {showLeaveApply && (
-            <button
-              onClick={() => { setPrefillDate(undefined); setShowLeaveForm(true); }}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors mr-2"
-            >
-              <Plus size={13} />Apply Leave
-            </button>
+            <div className="relative mr-2">
+              <button
+                onClick={() => setShowApplyDropdown(!showApplyDropdown)}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors"
+              >
+                <Plus size={13} />Apply for...
+              </button>
+              {showApplyDropdown && (
+                <>
+                  <div 
+                    className="fixed inset-0 z-10" 
+                    onClick={() => setShowApplyDropdown(false)} 
+                  />
+                  <div className="absolute right-0 mt-2 w-40 bg-white border border-slate-200 rounded-lg shadow-lg z-20 overflow-hidden text-sm">
+                    <button
+                      onClick={() => {
+                        setPrefillDate(undefined);
+                        setShowApplyDropdown(false);
+                        setShowLeaveForm(true);
+                      }}
+                      className="w-full text-left px-4 py-2 hover:bg-slate-50 text-slate-700 transition-colors"
+                    >
+                      Leave
+                    </button>
+                    <a
+                      href="/dashboard/leave"
+                      className="block w-full text-left px-4 py-2 hover:bg-slate-50 text-slate-700 transition-colors"
+                    >
+                      Regularisation
+                    </a>
+                  </div>
+                </>
+              )}
+            </div>
           )}
           <button onClick={() => setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() - 1))}
             className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500 transition-colors">
@@ -223,7 +252,7 @@ export function AttendanceCalendar({
                 onClick={() => handleDayClick(tooltip.date)}
                 className="text-xs text-blue-600 hover:underline"
               >
-                + Apply leave for this date
+                + Apply for leave on this date
               </button>
               {tooltip.record && (tooltip.record.status === 'ABSENT' || tooltip.record.status === 'HALF_DAY' || !tooltip.record.checkOutAt || tooltip.record.isLate) && (
                  <a
