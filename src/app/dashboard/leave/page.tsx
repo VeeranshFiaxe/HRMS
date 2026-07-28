@@ -34,6 +34,9 @@ export default async function EmployeeLeavePage() {
   const monthStart = startOfMonth(now);
   const monthEnd = endOfMonth(now);
 
+  // Only count APPROVED requests towards 'used' for the display.
+  // The backend API route separately enforces the limit using PENDING+APPROVED,
+  // so submitting a request does NOT prematurely reduce the displayed balance.
   const usedRegularizations = await prisma.regularizationRequest.count({
     where: {
       userId,
@@ -41,9 +44,7 @@ export default async function EmployeeLeavePage() {
         gte: monthStart,
         lte: monthEnd,
       },
-      status: {
-        in: ["PENDING", "APPROVED"]
-      }
+      status: "APPROVED",
     },
   });
 

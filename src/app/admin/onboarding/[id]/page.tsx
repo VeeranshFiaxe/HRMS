@@ -135,19 +135,19 @@ export default function FormDetails({ params }: { params: { id: string } }) {
             <div className="space-y-3">
               {form.fields.map((f: any, i: number) => (
                 <div key={i} className="text-sm">
-                  <span className="font-medium text-slate-700">{f.label}</span>
-                  <span className="text-slate-400 text-xs ml-2">({f.type})</span>
-                  {f.required && <span className="text-red-500 ml-1">*</span>}
+                  <div className="flex items-center gap-1">
+                    <span className="font-medium text-slate-700">{f.label}</span>
+                    <span className="text-slate-400 text-xs">({f.type})</span>
+                    {f.required && <span className="text-red-500 ml-0.5">*</span>}
+                  </div>
+                  {f.profileMapping && (
+                    <span className="text-xs text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded mt-0.5 inline-block">
+                      → {f.profileMapping.replace(".", " › ")}
+                    </span>
+                  )}
                 </div>
               ))}
             </div>
-            {form.status === "DRAFT" && (
-              <div className="mt-6 pt-4 border-t border-slate-100">
-                <Link href={`/admin/onboarding/new`} className="text-sm text-blue-600 hover:underline">
-                  Note: Form builder editing logic would go here.
-                </Link>
-              </div>
-            )}
           </div>
         </div>
       </div>

@@ -71,19 +71,19 @@ export function RegularisationManagementClient({ requests, employees, year, mont
     router.push(`/admin/attendance/regularisation?${params}`);
   };
 
-  const doAction = async (id: string, action: "APPROVE" | "REJECT") => {
+  const doAction = async (id: string, action: "approve" | "reject") => {
     setLoading(id + action);
     try {
       const res = await fetch(`/api/admin/inbox/regularization/${id}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action, adminNote: actionNote[id] }),
+        body: JSON.stringify({ action: action.toLowerCase(), adminNote: actionNote[id] }),
       });
       if (!res.ok) {
         const data = await res.json();
         throw new Error(data.error || "Failed");
       }
-      toast.success(`Request ${action.toLowerCase()}d`);
+      toast.success(`Request ${action}d`);
       router.refresh();
     } catch (e: any) {
       toast.error(e.message || "Action failed");
@@ -235,20 +235,20 @@ export function RegularisationManagementClient({ requests, employees, year, mont
                       />
                     </div>
                     <button
-                      onClick={() => doAction(req.id, "APPROVE")}
-                      disabled={loading === req.id + "APPROVE"}
+                      onClick={() => doAction(req.id, "approve")}
+                      disabled={loading === req.id + "approve"}
                       className="btn-secondary text-xs py-2 px-4 text-emerald-700 border-emerald-200 hover:bg-emerald-50"
                     >
                       <Check size={13} />
-                      {loading === req.id + "APPROVE" ? "Approving..." : "Approve"}
+                      {loading === req.id + "approve" ? "Approving..." : "Approve"}
                     </button>
                     <button
-                      onClick={() => doAction(req.id, "REJECT")}
-                      disabled={loading === req.id + "REJECT"}
+                      onClick={() => doAction(req.id, "reject")}
+                      disabled={loading === req.id + "reject"}
                       className="btn-secondary text-xs py-2 px-4 text-red-600 border-red-200 hover:bg-red-50"
                     >
                       <X size={13} />
-                      {loading === req.id + "REJECT" ? "Rejecting..." : "Reject"}
+                      {loading === req.id + "reject" ? "Rejecting..." : "Reject"}
                     </button>
                   </div>
                 </div>

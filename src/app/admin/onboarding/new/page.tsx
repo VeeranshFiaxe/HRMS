@@ -3,8 +3,9 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Save, Plus, GripVertical, Trash2 } from "lucide-react";
+import { ArrowLeft, Save, Plus, GripVertical, Trash2, Link2 } from "lucide-react";
 import toast from "react-hot-toast";
+import { PROFILE_FIELD_MAPPINGS, getMappingGroups } from "@/lib/profileFieldMappings";
 
 type FieldType = "SHORT_TEXT" | "LONG_TEXT" | "EMAIL" | "PHONE" | "DATE" | "DROPDOWN" | "FILE_UPLOAD" | "ADDRESS";
 
@@ -13,7 +14,8 @@ interface FormField {
   type: FieldType;
   label: string;
   required: boolean;
-  options?: string[]; // for dropdowns
+  options?: string[];
+  profileMapping?: string;
 }
 
 export default function NewOnboardingForm() {
@@ -27,7 +29,7 @@ export default function NewOnboardingForm() {
     setFields([...fields, {
       id: Math.random().toString(36).substr(2, 9),
       type,
-      label: `New ${type.replace("_", " ").toLowerCase()}`,
+      label: `New ${type.replace(/_/g, " ").toLowerCase()}`,
       required: false,
       options: type === "DROPDOWN" ? ["Option 1", "Option 2"] : undefined
     }]);
@@ -64,6 +66,8 @@ export default function NewOnboardingForm() {
       setLoading(false);
     }
   };
+
+  const groups = getMappingGroups();
 
   return (
     <div className="space-y-6 max-w-4xl">
@@ -107,17 +111,19 @@ export default function NewOnboardingForm() {
                 <div className="mt-2 text-slate-300 cursor-grab hidden sm:block">
                   <GripVertical size={16} />
                 </div>
-                <div className="flex-1 space-y-4">
-                  <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
+                <div className="flex-1 space-y-3">
+                  {/* Label + Type row */}
+                  <div className="flex flex-col sm:flex-row justify-between items-start gap-3">
                     <input 
                       type="text" 
                       value={field.label} 
                       onChange={e => updateField(field.id, { label: e.target.value })}
                       className="input font-medium flex-1"
+                      placeholder="Field label"
                     />
                     <select 
                       value={field.type} 
-                      onChange={e => updateField(field.id, { type: e.target.value as FieldType })}
+                      onChange={e => updateField(field.id, { type: e.target.value as FieldType, profileMapping: undefined })}
                       className="input sm:w-40"
                     >
                       <option value="SHORT_TEXT">Short Text</option>
@@ -130,7 +136,8 @@ export default function NewOnboardingForm() {
                       <option value="FILE_UPLOAD">File Upload</option>
                     </select>
                   </div>
-                  
+
+                  {/* Dropdown options */}
                   {field.type === "DROPDOWN" && (
                     <div>
                       <label className="label text-xs text-slate-500">Options (comma separated)</label>
@@ -143,7 +150,38 @@ export default function NewOnboardingForm() {
                     </div>
                   )}
 
-                  <div className="flex justify-between items-center pt-4 border-t border-slate-100">
+                  {/* Profile Mapping */}
+                  <div className="flex items-center gap-2 bg-slate-50 rounded-lg px-3 py-2">
+                    <Link2 size={14} className="text-slate-400 shrink-0" />
+                    <label className="text-xs text-slate-500 font-medium shrink-0">Maps to Profile:</label>
+                    <select
+                      value={field.profileMapping || ""}
+                      onChange={e => updateField(field.id, { profileMapping: e.target.value || undefined })}
+                      className="flex-1 text-xs bg-transparent border-0 focus:ring-0 text-slate-700 cursor-pointer py-0 px-0"
+                    >
+                      <option value="">— Not mapped —</option>
+                      {groups.map(group => {
+                        const groupMappings = PROFILE_FIELD_MAPPINGS.filter(
+                          m => m.group === group && (!m.allowedTypes || m.allowedTypes.includes(field.type))
+                        );
+                        if (groupMappings.length === 0) return null;
+                        return (
+                          <optgroup key={group} label={group}>
+                            {groupMappings.map(m => (
+                              <option key={m.value} value={m.value}>{m.label}</option>
+                            ))}
+                          </optgroup>
+                        );
+                      })}
+                    </select>
+                    {field.profileMapping && (
+                      <span className="shrink-0 text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-medium">
+                        Mapped
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex justify-between items-center pt-2 border-t border-slate-100">
                     <label className="flex items-center gap-2 cursor-pointer">
                       <input 
                         type="checkbox" 
@@ -170,8 +208,8 @@ export default function NewOnboardingForm() {
         </div>
 
         <div className="lg:col-span-1">
-          <div className="card p-4 sticky top-6">
-            <h3 className="font-semibold text-slate-900 mb-4 flex items-center gap-2">
+          <div className="card p-4 sticky top-6 space-y-4">
+            <h3 className="font-semibold text-slate-900 flex items-center gap-2">
               <Plus size={16} /> Add Field
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-2">
@@ -183,6 +221,13 @@ export default function NewOnboardingForm() {
               <button onClick={() => addField("ADDRESS")} className="btn-secondary justify-start font-normal">Address</button>
               <button onClick={() => addField("DROPDOWN")} className="btn-secondary justify-start font-normal">Dropdown List</button>
               <button onClick={() => addField("FILE_UPLOAD")} className="btn-secondary justify-start font-normal">File Upload</button>
+            </div>
+
+            <div className="border-t border-slate-100 pt-4">
+              <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Field Mapping</h4>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                Each field can be mapped to a destination in the Employee Profile. Mapped values are automatically populated when you approve a candidate.
+              </p>
             </div>
           </div>
         </div>

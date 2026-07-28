@@ -29,7 +29,7 @@ export default function InboxItemClient({ item }: InboxItemClientProps) {
         res = await fetch(`/api/admin/inbox/regularization/${item.relatedId}`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: action.toUpperCase(), adminNote: reason || "" }),
+          body: JSON.stringify({ action, adminNote: reason || "" }),
         });
       } else {
         res = await fetch(`/api/leave/${item.relatedId}`, {

@@ -52,13 +52,31 @@ export default function PublicOnboardingForm({ params }: { params: { id: string 
       }
 
       let candidateName = "Unknown Candidate";
-      let candidateEmail = "no-email@provided.com";
+      let candidateEmail = "";
 
+      // Primary: use profileMapping (most reliable — set by admin in form builder)
       for (const field of form.fields) {
-        const label = field.label.toLowerCase();
-        if (label.includes("name") && formData[field.id]) candidateName = formData[field.id];
-        if (label.includes("email") && formData[field.id]) candidateEmail = formData[field.id];
+        const val = formData[field.id];
+        if (!val) continue;
+        if (field.profileMapping === "basicInfo.name") candidateName = val;
+        if (field.profileMapping === "basicInfo.email" || field.profileMapping === "basicInfo.personalEmail") {
+          if (!candidateEmail) candidateEmail = val;
+        }
       }
+
+      // Fallback: label-based heuristics (for unmapped forms)
+      if (candidateName === "Unknown Candidate" || !candidateEmail) {
+        for (const field of form.fields) {
+          const label = (field.label || "").toLowerCase();
+          const val = formData[field.id];
+          if (!val) continue;
+          if (candidateName === "Unknown Candidate" && label.includes("name")) candidateName = val;
+          if (!candidateEmail && (label.includes("email") || label.includes("e-mail"))) candidateEmail = val;
+        }
+      }
+
+      if (!candidateEmail) candidateEmail = "no-email@provided.com";
+
 
       // 1. Create the submission
       const subRes = await fetch(`/api/public/onboarding/${params.id}`, {

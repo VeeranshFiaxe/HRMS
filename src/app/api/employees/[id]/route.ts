@@ -25,23 +25,41 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 
   try {
     const body = await req.json();
-    const { name, role, employmentType, department, designation, phone, isActive, timeFormat, dateOfBirth } = body;
+    const {
+      name, email, personalEmail, role, employmentType,
+      department, designation, phone, isActive, timeFormat,
+      dateOfBirth, joiningDate, exitDate,
+      emergencyContactName, emergencyContactNumber,
+    } = body;
 
-    // Only admins can change certain fields
     const isAdmin = session.user.role === "ADMIN";
+
+    // If email is being changed, check for uniqueness first
+    if (isAdmin && email !== undefined) {
+      const existing = await prisma.user.findUnique({ where: { email } });
+      if (existing && existing.id !== params.id) {
+        return NextResponse.json({ success: false, error: "This email is already in use by another employee." }, { status: 409 });
+      }
+    }
 
     const updated = await prisma.user.update({
       where: { id: params.id },
       data: {
         ...(name !== undefined && { name }),
         ...(phone !== undefined && { phone }),
+        ...(personalEmail !== undefined && { personalEmail }),
         ...(timeFormat !== undefined && { timeFormat }),
+        ...(isAdmin && email !== undefined && { email }),
         ...(isAdmin && role !== undefined && { role }),
         ...(isAdmin && employmentType !== undefined && { employmentType }),
         ...(isAdmin && department !== undefined && { department }),
         ...(isAdmin && designation !== undefined && { designation }),
         ...(isAdmin && isActive !== undefined && { isActive }),
         ...(isAdmin && dateOfBirth !== undefined && { dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : null }),
+        ...(isAdmin && joiningDate && { joiningDate: new Date(joiningDate) }),
+        ...(isAdmin && exitDate !== undefined && { exitDate: exitDate ? new Date(exitDate) : null }),
+        ...(isAdmin && emergencyContactName !== undefined && { emergencyContactName }),
+        ...(isAdmin && emergencyContactNumber !== undefined && { emergencyContactNumber }),
       },
     });
 
@@ -60,7 +78,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   }
 }
 
-// PUT: Full profile save (used by EditEmployeeForm — same as PATCH but for full replace semantics)
+// PUT: Full profile save (used by EditEmployeeForm — delegates to PATCH)
 export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
   return PATCH(req, { params });
 }
