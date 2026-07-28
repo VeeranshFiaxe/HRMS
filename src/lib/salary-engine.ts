@@ -42,25 +42,25 @@ export async function calculateSalary(userId: string, year: number, month: numbe
   const absentDeductionFactor = override?.absentDeductionFactor ?? effectiveRule?.absentDeductionFactor ?? 1.0;
 
   // 4. Build attendance counts from records
-  // ON_LEAVE records should NOT count as absent — they are handled via leave summary
   const presentFull = summary.records.filter(
     (r) => r.status === "PRESENT" && !r.isLate
   ).length;
-  const lateDays = summary.records.filter((r) => r.isLate && r.status !== "ABSENT").length;
+  const lateDays = summary.records.filter((r) => r.status === "LATE" || (r.isLate && r.status !== "ABSENT")).length;
   const halfDays = summary.records.filter((r) => r.status === "HALF_DAY").length;
   const absentDays = summary.records.filter((r) => r.status === "ABSENT").length;
   const onLeaveDays = summary.records.filter((r) => r.status === "ON_LEAVE").length;
 
-  const { paidLeaveDays, unpaidLeaveDays } = leaveSummary;
+  const { paidLeaveDays = 0, unpaidLeaveDays = 0 } = leaveSummary || {};
 
   // Total working days in the month (schedule-aware, holidays excluded)
-  const totalWorkingDays = summary.totalWorkingDays;
+  const totalWorkingDays = summary.totalWorkingDays || 0;
 
   const perDayRate = totalWorkingDays > 0 ? baseSalary / totalWorkingDays : 0;
 
   // 5. Calculate deductions
   // Late: each late day deducts lateDeductionFactor of a day's pay
-  const lateDeduction = lateDays * lateDeductionFactor * perDayRate;
+  const latePenalty = Math.round(lateDays * lateDeductionFactor * 100) / 100;
+  const lateDeduction = latePenalty * perDayRate;
 
   // Half day: 0.5 day deducted (halfDayDeductionFactor)
   const halfDayDeduction = halfDays * halfDayDeductionFactor * perDayRate;
@@ -83,6 +83,8 @@ export async function calculateSalary(userId: string, year: number, month: numbe
 
   // Effective worked days for reference
   const workedDays = presentFull + lateDays + halfDays * 0.5 + paidLeaveDays;
+  const paidLeavesAllowed = override?.paidLeaveDaysPerMonth ?? effectiveRule?.paidLeaveDaysPerMonth ?? 1;
+  const totalPaidDays = perDayRate > 0 ? Math.max(0, Math.round((netSalary / perDayRate) * 100) / 100) : 0;
 
   return {
     success: true,
@@ -98,12 +100,16 @@ export async function calculateSalary(userId: string, year: number, month: numbe
       // Attendance breakdown
       totalWorkingDays,
       presentFull,
+      presentFullDays: presentFull,
       lateDays,
       halfDays,
       absentDays,
       onLeaveDays,
+      latePenalty,
       // Leave breakdown
       paidLeaveDays,
+      paidLeavesUtilized: paidLeaveDays,
+      paidLeavesAllowed,
       unpaidLeaveDays,
       // Deduction details
       lateDeductionFactor,
@@ -116,7 +122,10 @@ export async function calculateSalary(userId: string, year: number, month: numbe
       totalDeductions: Math.round(totalDeductions * 100) / 100,
       // Summary
       workedDays: Math.round(workedDays * 10) / 10,
+      daysWorked: Math.round(workedDays * 10) / 10,
+      totalPaidDays,
       netSalary: Math.round(netSalary * 100) / 100,
+      netEarned: Math.round(netSalary * 100) / 100,
       currency: "₹",
     },
   };

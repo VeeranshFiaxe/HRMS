@@ -26,7 +26,7 @@ export function SalaryRulesClient({ initialRules }: Props) {
         name: "New Salary Rule",
         baseSalary: 0,
         halfDayDeductionFactor: 0.5,
-        lateDeductionPerDay: 0,
+        lateDeductionFactor: 0.33,
         absentDeductionFactor: 1,
         paidLeaveDaysPerMonth: 1,
         note: ""
@@ -59,7 +59,7 @@ export function SalaryRulesClient({ initialRules }: Props) {
         ...updates,
         baseSalary: parseFloat(updates.baseSalary) || 0,
         halfDayDeductionFactor: parseFloat(updates.halfDayDeductionFactor) || 0,
-        lateDeductionPerDay: parseFloat(updates.lateDeductionPerDay) || 0,
+        lateDeductionFactor: parseFloat(updates.lateDeductionFactor) || 0,
         absentDeductionFactor: parseFloat(updates.absentDeductionFactor) || 0,
         paidLeaveDaysPerMonth: parseInt(updates.paidLeaveDaysPerMonth) || 0,
       };
@@ -208,9 +208,9 @@ export function SalaryRulesClient({ initialRules }: Props) {
                       <p className="text-xs text-slate-400 mt-1">0.5 = deduct half a day's pay per half-day</p>
                     </div>
                     <div>
-                      <label className="label">Late Deduction Per Day (₹)</label>
-                      <input type="number" step="50" min="0" className="input" value={rule.lateDeductionPerDay} onChange={e => updateLocalRule(rule.id, 'lateDeductionPerDay', e.target.value)} />
-                      <p className="text-xs text-slate-400 mt-1">Fixed amount deducted per late day</p>
+                      <label className="label">Late Deduction Factor</label>
+                      <input type="number" step="0.05" min="0" max="2" className="input" value={rule.lateDeductionFactor ?? 0.33} onChange={e => updateLocalRule(rule.id, 'lateDeductionFactor', e.target.value)} />
+                      <p className="text-xs text-slate-400 mt-1">0.33 = deduct 0.33 day's pay per late day</p>
                     </div>
                     <div>
                       <label className="label">Paid Leave Days / Month</label>

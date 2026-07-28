@@ -11,16 +11,21 @@ export default async function OfficeSettingsPage() {
 
   const settings = await prisma.officeSettings.findFirst();
   const rules = await prisma.attendanceRules.findFirst();
+  let defaultSalaryRule = await prisma.salaryRules.findFirst({ where: { isDefault: true } });
+  if (!defaultSalaryRule) {
+    defaultSalaryRule = await prisma.salaryRules.findFirst();
+  }
 
   return (
     <div className="space-y-6 max-w-2xl">
       <div className="page-header">
         <h1 className="page-title">Office & Access Settings</h1>
-        <p className="page-subtitle">Configure geofence, IP allowlist, and attendance rules</p>
+        <p className="page-subtitle">Configure geofence, IP allowlist, attendance & default salary rules</p>
       </div>
       <OfficeSettingsForm
         settings={settings ? JSON.parse(JSON.stringify(settings)) : null}
         rules={rules ? JSON.parse(JSON.stringify(rules)) : null}
+        defaultSalaryRule={defaultSalaryRule ? JSON.parse(JSON.stringify(defaultSalaryRule)) : null}
       />
     </div>
   );

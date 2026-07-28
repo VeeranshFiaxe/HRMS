@@ -594,6 +594,7 @@ export function EditEmployeeForm({ employee, schedules, salaryRulesList }: EditE
     enabled: !!employee.salaryRuleOverride,
     baseSalary: employee.salaryRuleOverride?.baseSalary?.toString() || "",
     halfDayDeductionFactor: so.halfDayDeductionFactor?.toString() || (rule?.halfDayDeductionFactor?.toString() || "0.5"),
+    lateDeductionFactor: so.lateDeductionFactor?.toString() || (rule?.lateDeductionFactor?.toString() || "0.33"),
     absentDeductionFactor: so.absentDeductionFactor?.toString() || (rule?.absentDeductionFactor?.toString() || "1"),
     paidLeaveDaysPerMonth: so.paidLeaveDaysPerMonth?.toString() || (rule?.paidLeaveDaysPerMonth?.toString() || "1"),
     note: so.note || "",
@@ -688,18 +689,18 @@ export function EditEmployeeForm({ employee, schedules, salaryRulesList }: EditE
       startY: 52,
       head: [["Description", "Details", "Amount"]],
       body: [
-        ["Base Salary", "", `Rs ${(salaryBreakup.baseSalary || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`],
-        ["Total Working Days", `${salaryBreakup.totalWorkingDays || 0} days`, ""],
-        ["Per Day Rate", "", `Rs ${(salaryBreakup.perDayRate || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`],
-        ["Days Present (Full)", `${salaryBreakup.presentFullDays || 0} days`, ""],
-        ["Days Half", `${salaryBreakup.halfDays || 0} days`, ""],
-        ["Days Late", `${salaryBreakup.lateDays || 0} days`, ""],
-        ["Days Absent", `${salaryBreakup.absentDays || 0} days`, ""],
-        ["Late Penalty", `-${salaryBreakup.latePenalty || 0} days`, ""],
-        ["Paid Leaves Utilized", `${salaryBreakup.paidLeavesUtilized || 0} / ${salaryBreakup.paidLeavesAllowed || 0}`, ""],
-        ["Effective Payable Days", `${salaryBreakup.totalPaidDays || 0} days`, ""],
+        ["Base Salary", "", `Rs ${(salaryBreakup.baseSalary ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`],
+        ["Total Working Days", `${salaryBreakup.totalWorkingDays ?? 0} days`, ""],
+        ["Per Day Rate", "", `Rs ${(salaryBreakup.perDayRate ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`],
+        ["Days Present (Full)", `${salaryBreakup.presentFullDays ?? salaryBreakup.presentFull ?? 0} days`, ""],
+        ["Days Half", `${salaryBreakup.halfDays ?? 0} days`, ""],
+        ["Days Late", `${salaryBreakup.lateDays ?? 0} days`, ""],
+        ["Days Absent", `${salaryBreakup.absentDays ?? 0} days`, ""],
+        ["Late Penalty", `-${salaryBreakup.latePenalty ?? 0} days`, ""],
+        ["Paid Leaves Utilized", `${salaryBreakup.paidLeavesUtilized ?? salaryBreakup.paidLeaveDays ?? 0} / ${salaryBreakup.paidLeavesAllowed ?? 1}`, ""],
+        ["Effective Payable Days", `${salaryBreakup.totalPaidDays ?? 0} days`, ""],
       ],
-      foot: [["Final Calculated Salary", "", `Rs ${(salaryBreakup.netEarned || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`]],
+      foot: [["Final Calculated Salary", "", `Rs ${(salaryBreakup.netEarned ?? salaryBreakup.netSalary ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`]],
       theme: "grid",
       headStyles: { fillColor: [59, 130, 246] },
       footStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: "bold" },
@@ -736,6 +737,7 @@ export function EditEmployeeForm({ employee, schedules, salaryRulesList }: EditE
         body: salary.enabled ? JSON.stringify({
           baseSalary: parseFloat(salary.baseSalary) || null,
           halfDayDeductionFactor: parseFloat(salary.halfDayDeductionFactor),
+          lateDeductionFactor: parseFloat(salary.lateDeductionFactor),
           absentDeductionFactor: parseFloat(salary.absentDeductionFactor),
           paidLeaveDaysPerMonth: parseInt(salary.paidLeaveDaysPerMonth),
           note: salary.note,
@@ -1037,6 +1039,11 @@ export function EditEmployeeForm({ employee, schedules, salaryRulesList }: EditE
                   <p className="text-xs text-slate-400 mt-1">0.5 = deduct half day's pay</p>
                 </div>
                 <div>
+                  <label className="label">Late Deduction Factor</label>
+                  <input type="number" step="0.05" className="input" value={salary.lateDeductionFactor} onChange={e => setSalary(s => ({ ...s, lateDeductionFactor: e.target.value }))} />
+                  <p className="text-xs text-slate-400 mt-1">0.33 = deduct 0.33 day's pay per late day</p>
+                </div>
+                <div>
                   <label className="label">Absent Deduction Factor</label>
                   <input type="number" step="0.1" className="input" value={salary.absentDeductionFactor} onChange={e => setSalary(s => ({ ...s, absentDeductionFactor: e.target.value }))} />
                 </div>
@@ -1072,16 +1079,16 @@ export function EditEmployeeForm({ employee, schedules, salaryRulesList }: EditE
                 <table className="w-full text-sm text-left">
                   <tbody className="divide-y divide-slate-200">
                     {[
-                      ["Base Salary", `₹${salaryBreakup.baseSalary.toLocaleString(undefined, { minimumFractionDigits: 2 })}`, "bg-white"],
-                      ["Total Working Days", salaryBreakup.totalWorkingDays, ""],
-                      ["Per Day Rate", `₹${salaryBreakup.perDayRate.toLocaleString(undefined, { minimumFractionDigits: 2 })}`, "bg-white"],
-                      ["Days Present (Full)", salaryBreakup.presentFullDays, ""],
-                      ["Days Half", salaryBreakup.halfDays, "bg-white"],
-                      ["Days Late", salaryBreakup.lateDays, ""],
-                      ["Late Penalty (Days)", `-${salaryBreakup.latePenalty}`, "bg-white"],
-                      ["Days Absent", salaryBreakup.absentDays, ""],
-                      ["Effective Days Worked", salaryBreakup.daysWorked, "bg-white"],
-                      ["Paid Leaves Utilized", `${salaryBreakup.paidLeavesUtilized} / ${salaryBreakup.paidLeavesAllowed}`, ""],
+                      ["Base Salary", `₹${(salaryBreakup.baseSalary ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`, "bg-white"],
+                      ["Total Working Days", salaryBreakup.totalWorkingDays ?? 0, ""],
+                      ["Per Day Rate", `₹${(salaryBreakup.perDayRate ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`, "bg-white"],
+                      ["Days Present (Full)", salaryBreakup.presentFullDays ?? salaryBreakup.presentFull ?? 0, ""],
+                      ["Days Half", salaryBreakup.halfDays ?? 0, "bg-white"],
+                      ["Days Late", salaryBreakup.lateDays ?? 0, ""],
+                      ["Late Penalty (Days)", `-${salaryBreakup.latePenalty ?? 0}`, "bg-white"],
+                      ["Days Absent", salaryBreakup.absentDays ?? 0, ""],
+                      ["Effective Days Worked", salaryBreakup.daysWorked ?? salaryBreakup.workedDays ?? 0, "bg-white"],
+                      ["Paid Leaves Utilized", `${salaryBreakup.paidLeavesUtilized ?? salaryBreakup.paidLeaveDays ?? 0} / ${salaryBreakup.paidLeavesAllowed ?? 1}`, ""],
                     ].map(([label, val, bg]) => (
                       <tr key={label as string} className={bg as string}>
                         <td className="px-4 py-3 text-slate-600">{label}</td>
@@ -1090,11 +1097,11 @@ export function EditEmployeeForm({ employee, schedules, salaryRulesList }: EditE
                     ))}
                     <tr className="bg-white">
                       <td className="px-4 py-3 font-semibold text-slate-900">Total Payable Days</td>
-                      <td className="px-4 py-3 text-right font-mono font-semibold text-emerald-600">{salaryBreakup.totalPaidDays}</td>
+                      <td className="px-4 py-3 text-right font-mono font-semibold text-emerald-600">{salaryBreakup.totalPaidDays ?? 0}</td>
                     </tr>
                     <tr className="bg-slate-100">
                       <td className="px-4 py-4 font-bold text-slate-900 text-base">Net Earned So Far</td>
-                      <td className="px-4 py-4 text-right font-mono font-bold text-emerald-700 text-lg">₹{salaryBreakup.netEarned.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                      <td className="px-4 py-4 text-right font-mono font-bold text-emerald-700 text-lg">₹{(salaryBreakup.netEarned ?? salaryBreakup.netSalary ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
                     </tr>
                   </tbody>
                 </table>

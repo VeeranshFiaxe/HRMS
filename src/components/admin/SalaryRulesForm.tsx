@@ -11,7 +11,7 @@ export function SalaryRulesForm({ rules }: Props) {
   const [form, setForm] = useState({
     baseSalary: rules?.baseSalary?.toString() || "0",
     halfDayDeductionFactor: rules?.halfDayDeductionFactor?.toString() || "0.5",
-    lateDeductionPerDay: rules?.lateDeductionPerDay?.toString() || "0",
+    lateDeductionFactor: rules?.lateDeductionFactor?.toString() || "0.33",
     absentDeductionFactor: rules?.absentDeductionFactor?.toString() || "1",
     paidLeaveDaysPerMonth: rules?.paidLeaveDaysPerMonth?.toString() || "1",
     note: rules?.note || "",
@@ -26,7 +26,7 @@ export function SalaryRulesForm({ rules }: Props) {
         body: JSON.stringify({
           baseSalary: parseFloat(form.baseSalary),
           halfDayDeductionFactor: parseFloat(form.halfDayDeductionFactor),
-          lateDeductionPerDay: parseFloat(form.lateDeductionPerDay),
+          lateDeductionFactor: parseFloat(form.lateDeductionFactor),
           absentDeductionFactor: parseFloat(form.absentDeductionFactor),
           paidLeaveDaysPerMonth: parseInt(form.paidLeaveDaysPerMonth),
           note: form.note,
@@ -78,10 +78,10 @@ export function SalaryRulesForm({ rules }: Props) {
             <p className="text-xs text-slate-400 mt-1">0.5 = deduct half a day's pay per half-day</p>
           </div>
           <div>
-            <label className="label">Late Deduction Per Day (₹)</label>
-            <input type="number" step="50" min="0" className="input" value={form.lateDeductionPerDay}
-              onChange={e => setForm(f => ({ ...f, lateDeductionPerDay: e.target.value }))} />
-            <p className="text-xs text-slate-400 mt-1">Fixed amount deducted per late day (0 = no deduction)</p>
+            <label className="label">Late Deduction Factor</label>
+            <input type="number" step="0.05" min="0" max="2" className="input" value={form.lateDeductionFactor}
+              onChange={e => setForm(f => ({ ...f, lateDeductionFactor: e.target.value }))} />
+            <p className="text-xs text-slate-400 mt-1">0.33 = deduct 0.33 day's pay per late day</p>
           </div>
           <div>
             <label className="label">Paid Leave Days / Month</label>

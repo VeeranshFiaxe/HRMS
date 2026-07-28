@@ -25,9 +25,19 @@ interface Props {
     minHoursFullDay: number;
     minHoursHalfDay: number;
   } | null;
+  defaultSalaryRule?: {
+    id: string;
+    baseSalary: number;
+    lateDeductionFactor: number;
+    halfDayDeductionFactor: number;
+    absentDeductionFactor: number;
+    paidLeaveDaysPerMonth: number;
+    name: string;
+    isDefault: boolean;
+  } | null;
 }
 
-export function OfficeSettingsForm({ settings, rules }: Props) {
+export function OfficeSettingsForm({ settings, rules, defaultSalaryRule }: Props) {
   const [loading, setLoading] = useState(false);
   const [tab, setTab] = useState<"geofence" | "ip" | "rules">("geofence");
 
@@ -55,6 +65,15 @@ export function OfficeSettingsForm({ settings, rules }: Props) {
     autoCheckoutAfter: rules?.autoCheckoutAfter || "21:00",
     minHoursFullDay: rules?.minHoursFullDay?.toString() || "8",
     minHoursHalfDay: rules?.minHoursHalfDay?.toString() || "4",
+  });
+
+  // Linked Default Salary Rule state
+  const [salaryRuleState, setSalaryRuleState] = useState({
+    baseSalary: defaultSalaryRule?.baseSalary?.toString() || "7500",
+    lateDeductionFactor: defaultSalaryRule?.lateDeductionFactor?.toString() || "0.33",
+    halfDayDeductionFactor: defaultSalaryRule?.halfDayDeductionFactor?.toString() || "0.5",
+    absentDeductionFactor: defaultSalaryRule?.absentDeductionFactor?.toString() || "1.0",
+    paidLeaveDaysPerMonth: defaultSalaryRule?.paidLeaveDaysPerMonth?.toString() || "1",
   });
 
   const getCurrentLocation = () => {
@@ -131,7 +150,33 @@ export function OfficeSettingsForm({ settings, rules }: Props) {
         }),
       });
       const data = await res.json();
-      if (data.success) toast.success("Attendance rules saved");
+
+      // Linked Default Salary Rule update
+      const salaryPayload = {
+        name: defaultSalaryRule?.name || "Default Salary Rule",
+        isDefault: true,
+        baseSalary: parseFloat(salaryRuleState.baseSalary) || 0,
+        lateDeductionFactor: parseFloat(salaryRuleState.lateDeductionFactor) || 0.33,
+        halfDayDeductionFactor: parseFloat(salaryRuleState.halfDayDeductionFactor) || 0.5,
+        absentDeductionFactor: parseFloat(salaryRuleState.absentDeductionFactor) || 1.0,
+        paidLeaveDaysPerMonth: parseInt(salaryRuleState.paidLeaveDaysPerMonth) || 1,
+      };
+
+      if (defaultSalaryRule?.id) {
+        await fetch(`/api/salary-rules/${defaultSalaryRule.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(salaryPayload),
+        });
+      } else {
+        await fetch("/api/salary-rules", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(salaryPayload),
+        });
+      }
+
+      if (data.success) toast.success("Attendance & linked default salary rules saved");
       else toast.error(data.error || "Failed");
     } finally {
       setLoading(false);
@@ -324,9 +369,36 @@ export function OfficeSettingsForm({ settings, rules }: Props) {
             </div>
           </div>
 
+          <div className="border-t border-slate-200 pt-5 mt-5 space-y-4">
+            <div className="flex items-center gap-2">
+              <h4 className="font-semibold text-slate-900 text-sm">Linked Default Salary Rule</h4>
+              <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded font-medium">Synced with /admin/salary</span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="label">Default Base Salary (₹/month)</label>
+                <input type="number" min="0" className="input" value={salaryRuleState.baseSalary} onChange={e => setSalaryRuleState(s => ({ ...s, baseSalary: e.target.value }))} />
+              </div>
+              <div>
+                <label className="label">Late Deduction Factor</label>
+                <input type="number" step="0.05" min="0" max="2" className="input" value={salaryRuleState.lateDeductionFactor} onChange={e => setSalaryRuleState(s => ({ ...s, lateDeductionFactor: e.target.value }))} />
+                <p className="text-xs text-slate-400 mt-1">0.33 = deduct 0.33 day's pay per late day</p>
+              </div>
+              <div>
+                <label className="label">Half-Day Deduction Factor</label>
+                <input type="number" step="0.1" min="0" max="1" className="input" value={salaryRuleState.halfDayDeductionFactor} onChange={e => setSalaryRuleState(s => ({ ...s, halfDayDeductionFactor: e.target.value }))} />
+              </div>
+              <div>
+                <label className="label">Absent Deduction Factor</label>
+                <input type="number" step="0.1" min="0" max="2" className="input" value={salaryRuleState.absentDeductionFactor} onChange={e => setSalaryRuleState(s => ({ ...s, absentDeductionFactor: e.target.value }))} />
+              </div>
+            </div>
+          </div>
+
           <button onClick={saveRules} disabled={loading} className="btn-primary">
             {loading ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-            Save Rules
+            Save Rules & Default Salary
           </button>
         </div>
       )}
