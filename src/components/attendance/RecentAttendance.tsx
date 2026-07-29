@@ -1,6 +1,6 @@
 // src/components/attendance/RecentAttendance.tsx
 import { format } from "date-fns";
-import { cn, getStatusColor, getStatusLabel } from "@/lib/utils";
+import { cn, getStatusColor, getStatusLabel, formatTime } from "@/lib/utils";
 import { Clock } from "lucide-react";
 
 interface RecentAttendanceProps {
@@ -37,8 +37,6 @@ export function RecentAttendance({ records, timeFormat = "24h", timezone = "Asia
       </div>
       <div className="divide-y divide-slate-100 mt-3">
         {records.map((record) => {
-          // Add formatTime import above if not present
-          const { formatTime } = require("@/lib/utils");
           const checkInTime = record.checkInAt ? formatTime(new Date(record.checkInAt), timeFormat, timezone) : null;
           const checkOutTime = record.checkOutAt ? formatTime(new Date(record.checkOutAt), timeFormat, timezone) : null;
 

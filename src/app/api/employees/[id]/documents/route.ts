@@ -8,7 +8,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   try {
     const session = await getServerSession(authOptions);
     if (!session || session.user.role !== "ADMIN") {
-      return new NextResponse("Forbidden", { status: 403 });
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const documents = await prisma.document.findMany({
@@ -36,7 +36,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   try {
     const session = await getServerSession(authOptions);
     if (!session || session.user.role !== "ADMIN") {
-      return new NextResponse("Forbidden", { status: 403 });
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const formData = await req.formData();

@@ -7,12 +7,16 @@ import { authOptions } from "@/lib/auth";
 // ?preview=true → inline (for browser preview); default → attachment (download)
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     const doc = await prisma.document.findUnique({
       where: { id: params.id }
     });
 
     if (!doc) {
-      return new NextResponse("Not found", { status: 404 });
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
     const preview = req.nextUrl.searchParams.get("preview") === "true";

@@ -13,7 +13,6 @@ import {
   Users,
   Building2,
   LogOut,
-  ChevronRight,
   DollarSign,
   Shield,
   PartyPopper,

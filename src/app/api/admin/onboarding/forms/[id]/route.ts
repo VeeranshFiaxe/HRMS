@@ -6,14 +6,14 @@ import { authOptions } from "@/lib/auth";
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session || session.user.role !== "ADMIN") return new NextResponse("Forbidden", { status: 403 });
+    if (!session || session.user.role !== "ADMIN") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     const user = session.user;
 
     const form = await prisma.onboardingForm.findUnique({
       where: { id: params.id }
     });
 
-    if (!form) return new NextResponse("Not found", { status: 404 });
+    if (!form) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
     return NextResponse.json({ success: true, form });
   } catch (error: any) {
@@ -24,7 +24,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session || session.user.role !== "ADMIN") return new NextResponse("Forbidden", { status: 403 });
+    if (!session || session.user.role !== "ADMIN") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     const user = session.user;
 
     const body = await req.json();

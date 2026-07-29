@@ -66,7 +66,7 @@ export async function sendWelcomeEmail(
   tempPassword: string
 ): Promise<void> {
   const appName = process.env.APP_NAME || "HRMS";
-  const loginUrl = `${process.env.APP_URL || "http://localhost:3000"}/auth/login`;
+  const loginUrl = `${process.env.APP_URL || "https://hrms-fiaxe.netlify.app"}/auth/login`;
 
   await transporter.sendMail({
     from: process.env.SMTP_FROM || `${appName} <noreply@company.com>`,

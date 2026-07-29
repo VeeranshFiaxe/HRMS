@@ -7,7 +7,6 @@ import { ProfileForm } from "@/components/employee/ProfileForm";
 import { ProfileTabs } from "@/components/employee/ProfileTabs";
 import { getAttendanceSummary } from "@/lib/attendance-engine";
 import { getOrCreateLeaveBalance } from "@/lib/leave-engine";
-import { calculateSalary } from "@/lib/salary-engine";
 
 export const dynamic = "force-dynamic";
 
@@ -19,7 +18,7 @@ export default async function ProfilePage() {
 
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    include: { customSchedule: true, salaryRules: true },
+    include: { customSchedule: true },
   });
 
   if (!user) redirect("/auth/login");
@@ -52,22 +51,6 @@ export default async function ProfilePage() {
     orderBy: { createdAt: "desc" },
     take: 5,
   });
-
-  // Payroll preview (non-blocking)
-  let payrollPreview = null;
-  try {
-    const payResult = await calculateSalary(userId, year, month);
-    if (payResult.success && payResult.data) {
-      payrollPreview = {
-        netSalary: payResult.data.netSalary,
-        baseSalary: payResult.data.baseSalary,
-        totalDeductions: payResult.data.totalDeductions,
-        workedDays: payResult.data.workedDays,
-        month,
-        year,
-      };
-    }
-  } catch { /* ignore */ }
 
   // Schedule
   const schedule = user.customSchedule || companySchedule;
@@ -110,12 +93,6 @@ export default async function ProfilePage() {
       isPaid: r.isPaid,
     })),
     schedule: scheduleData,
-    salaryRule: user.salaryRules ? {
-      name: user.salaryRules.name,
-      baseSalary: user.salaryRules.baseSalary,
-      paidLeaveDaysPerMonth: user.salaryRules.paidLeaveDaysPerMonth,
-    } : null,
-    payrollPreview,
     attendanceRules: attendanceRules ? {
       graceMinutes: attendanceRules.graceMinutes,
       minHoursFullDay: attendanceRules.minHoursFullDay,
@@ -130,7 +107,7 @@ export default async function ProfilePage() {
     <div className="space-y-6 max-w-3xl">
       <div className="page-header">
         <h1 className="page-title">My Profile</h1>
-        <p className="page-subtitle">Your account, attendance, leave and payroll summary</p>
+        <p className="page-subtitle">Your account, attendance and leave summary</p>
       </div>
 
       {/* Edit form still available at top */}

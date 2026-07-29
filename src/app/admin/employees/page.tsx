@@ -3,10 +3,6 @@ import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import Link from "next/link";
-import { format } from "date-fns";
-import { Users, Plus, Pencil } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { EmployeesClient } from "@/components/admin/EmployeesClient";
 
 export default async function EmployeesPage() {

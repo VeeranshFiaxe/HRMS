@@ -9,6 +9,7 @@ import { StatsCards } from "@/components/employee/StatsCards";
 import { AttendanceCalendar } from "@/components/attendance/AttendanceCalendar";
 import { RecentAttendance } from "@/components/attendance/RecentAttendance";
 import { format, startOfDay } from "date-fns";
+import { toZonedTime } from "date-fns-tz";
 import { LiveClock } from "@/components/layout/LiveClock";
 import { PinnedAnnouncements } from "@/components/employee/PinnedAnnouncements";
 
@@ -113,7 +114,6 @@ export default async function DashboardPage() {
 }
 
 function getGreeting(timezone: string): string {
-  const { toZonedTime } = require("date-fns-tz");
   const localDate = toZonedTime(new Date(), timezone);
   const hour = localDate.getHours();
   if (hour < 12) return "morning";

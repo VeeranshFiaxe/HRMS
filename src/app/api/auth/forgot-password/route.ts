@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
       data: { resetToken: token, resetTokenExpiry: expiry },
     });
 
-    const resetUrl = `${process.env.APP_URL || "http://localhost:3000"}/auth/reset-password?token=${token}`;
+    const resetUrl = `${process.env.APP_URL || "https://hrms-fiaxe.netlify.app"}/auth/reset-password?token=${token}`;
     await sendPasswordResetEmail(user.email, user.name, resetUrl);
 
     return NextResponse.json({ success: true });

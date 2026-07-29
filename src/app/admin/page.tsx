@@ -4,13 +4,15 @@ import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { calculateSalary } from "@/lib/salary-engine";
+import { getEffectiveSchedule } from "@/lib/attendance-engine";
+import { isWorkingDay } from "@/lib/utils";
 import { format, startOfDay, startOfMonth, endOfMonth } from "date-fns";
 import {
   Users, Clock, XCircle, TrendingUp, UserCheck,
   Megaphone, Bell, Plus, Cake, Trophy, ChevronRight
 } from "lucide-react";
 import Link from "next/link";
-import { cn, getStatusColor, getStatusLabel } from "@/lib/utils";
+import { cn, getStatusColor, getStatusLabel, formatTime } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -57,7 +59,6 @@ export default async function AdminDashboardPage() {
   const timeFormat = (user?.timeFormat as "12h" | "24h") || "24h";
   const officeSettings = await prisma.officeSettings.findFirst();
   const timezone = officeSettings?.timezone || "Asia/Kolkata";
-  const { formatTime } = require("@/lib/utils");
 
   // Total active employees
   const totalEmployees = await prisma.user.count({
@@ -74,7 +75,19 @@ export default async function AdminDashboardPage() {
   const checkedIn = todayRecords.filter((r) => r.checkInAt && !r.checkOutAt).length;
   const checkedOut = todayRecords.filter((r) => r.checkInAt && r.checkOutAt).length;
   const lateToday = todayRecords.filter((r) => r.isLate).length;
-  const absentToday = totalEmployees - todayRecords.filter((r) => r.checkInAt).length;
+
+  // Only count someone as "absent today" if today is actually a working day for them
+  const activeEmployeeIds = await prisma.user.findMany({
+    where: { isActive: true, role: "EMPLOYEE" },
+    select: { id: true },
+  });
+  const checkedInIds = new Set(todayRecords.filter((r) => r.checkInAt).map((r) => r.userId));
+  let absentToday = 0;
+  for (const emp of activeEmployeeIds) {
+    if (checkedInIds.has(emp.id)) continue;
+    const schedule = await getEffectiveSchedule(emp.id);
+    if (schedule && isWorkingDay(today, schedule)) absentToday++;
+  }
 
   // Recent audit logs
   const auditLogs = await prisma.auditLog.findMany({

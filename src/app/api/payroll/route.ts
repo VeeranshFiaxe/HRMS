@@ -44,7 +44,7 @@ export async function GET(req: NextRequest) {
           department: emp.department,
           designation: emp.designation,
           employmentType: emp.employmentType,
-          salaryRuleName: emp.salaryRules?.name ?? emp.salaryRuleOverride ? "Custom Override" : "No Rule",
+          salaryRuleName: emp.salaryRules?.name ?? (emp.salaryRuleOverride ? "Custom Override" : "No Rule"),
           ...(result.success ? result.data : {
             error: result.error,
             baseSalary: 0,

@@ -2,7 +2,7 @@
 "use client";
 import { useState } from "react";
 import { format } from "date-fns";
-import { Save, Loader2, User, Clock, Eye, EyeOff } from "lucide-react";
+import { Save, Loader2, Clock, Eye, EyeOff } from "lucide-react";
 import toast from "react-hot-toast";
 
 interface Props { user: any; schedule: any; isCustomSchedule: boolean; }

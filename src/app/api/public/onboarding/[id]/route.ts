@@ -8,7 +8,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     });
 
     if (!form || form.status !== "PUBLISHED") {
-      return new NextResponse("Form not found or not published", { status: 404 });
+      return NextResponse.json({ error: "Form not found or not published" }, { status: 404 });
     }
 
     // Omit sensitive data
@@ -33,7 +33,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     });
 
     if (!form || form.status !== "PUBLISHED") {
-      return new NextResponse("Form not found or not published", { status: 404 });
+      return NextResponse.json({ error: "Form not found or not published" }, { status: 404 });
     }
 
     const body = await req.json();

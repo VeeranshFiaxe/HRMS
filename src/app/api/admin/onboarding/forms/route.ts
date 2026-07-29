@@ -6,7 +6,7 @@ import { authOptions } from "@/lib/auth";
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);
-    if (!session || session.user.role !== "ADMIN") return new NextResponse("Forbidden", { status: 403 });
+    if (!session || session.user.role !== "ADMIN") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     const user = session.user;
 
     const forms = await prisma.onboardingForm.findMany({
@@ -25,7 +25,7 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session || session.user.role !== "ADMIN") return new NextResponse("Forbidden", { status: 403 });
+    if (!session || session.user.role !== "ADMIN") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     const user = session.user;
 
     const body = await req.json();

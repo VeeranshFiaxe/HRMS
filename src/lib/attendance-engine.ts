@@ -481,7 +481,8 @@ export async function getAttendanceSummary(userId: string, year: number, month: 
   const today = startOfDay(now);
   const missingDates: Date[] = [];
 
-  // Count working days
+  // Build set of working day date-strings for fast lookup
+  const workingDayStrings = new Set<string>();
   let totalWorkingDays = 0;
   const cursor = new Date(start);
   while (cursor <= end) {
@@ -493,6 +494,7 @@ export async function getAttendanceSummary(userId: string, year: number, month: 
     
     if (!isHol && schedule[dayName]) {
       totalWorkingDays++;
+      workingDayStrings.add(cursor.toDateString());
 
       if (cursor < today) {
         const isOnLeave = leaves.some(l => cursor >= l.fromDate && cursor <= l.toDate);
@@ -503,6 +505,19 @@ export async function getAttendanceSummary(userId: string, year: number, month: 
       }
     }
     cursor.setDate(cursor.getDate() + 1);
+  }
+
+  // Delete any ABSENT records that fall on non-working days (bad backfills)
+  const badRecordIds = records
+    .filter((r) => !workingDayStrings.has(new Date(r.date).toDateString()) && r.status === "ABSENT")
+    .map((r) => r.id);
+  if (badRecordIds.length > 0) {
+    await prisma.attendanceRecord.deleteMany({ where: { id: { in: badRecordIds } } });
+    // Remove from local array
+    badRecordIds.forEach(id => {
+      const idx = records.findIndex(r => r.id === id);
+      if (idx !== -1) records.splice(idx, 1);
+    });
   }
 
   if (missingDates.length > 0) {
@@ -525,14 +540,17 @@ export async function getAttendanceSummary(userId: string, year: number, month: 
     records.push(...updatedRecords);
   }
 
-  const presentDays = records.filter((r) => r.status === "PRESENT").length;
-  const lateDays = records.filter((r) => r.status === "LATE").length;
-  const halfDays = records.filter((r) => r.status === "HALF_DAY").length;
-  const absentDays = records.filter((r) => r.status === "ABSENT").length;
-  const onLeaveDays = records.filter((r) => r.status === "ON_LEAVE").length;
+  // Only count stats for records on actual working days
+  const workingRecords = records.filter((r) => workingDayStrings.has(new Date(r.date).toDateString()));
 
-  // Total hours worked across all checked-in records
-  const totalHoursWorked = records.reduce((sum, r) => {
+  const presentDays = workingRecords.filter((r) => r.status === "PRESENT").length;
+  const lateDays = workingRecords.filter((r) => r.status === "LATE").length;
+  const halfDays = workingRecords.filter((r) => r.status === "HALF_DAY").length;
+  const absentDays = workingRecords.filter((r) => r.status === "ABSENT").length;
+  const onLeaveDays = workingRecords.filter((r) => r.status === "ON_LEAVE").length;
+
+  // Total hours worked across all checked-in records (working days only)
+  const totalHoursWorked = workingRecords.reduce((sum, r) => {
     if (r.hoursWorked != null) return sum + r.hoursWorked;
     // If no checkout yet, estimate from checkInAt to now
     if (r.checkInAt && !r.checkOutAt) {
@@ -570,7 +588,7 @@ export async function getAttendanceSummary(userId: string, year: number, month: 
     totalHoursWorked: Math.round(totalHoursWorked * 10) / 10,
     attendancePercentage,
     lateStreak,
-    records,
+    records: workingRecords,
   };
 }
 

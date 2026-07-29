@@ -6,7 +6,7 @@ import { authOptions } from "@/lib/auth";
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session || session.user.role !== "ADMIN") return new NextResponse("Forbidden", { status: 403 });
+    if (!session || session.user.role !== "ADMIN") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     const user = session.user;
 
     const submission = await prisma.onboardingSubmission.findUnique({
@@ -19,7 +19,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       }
     });
 
-    if (!submission) return new NextResponse("Not found", { status: 404 });
+    if (!submission) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
     return NextResponse.json({ success: true, submission });
   } catch (error: any) {
@@ -30,7 +30,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session || session.user.role !== "ADMIN") return new NextResponse("Forbidden", { status: 403 });
+    if (!session || session.user.role !== "ADMIN") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     const user = session.user;
 
     const body = await req.json();

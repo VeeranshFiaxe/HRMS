@@ -46,15 +46,15 @@ function applyFieldMapping(
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session || session.user.role !== "ADMIN") return new NextResponse("Forbidden", { status: 403 });
+    if (!session || session.user.role !== "ADMIN") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
     const submission = await prisma.onboardingSubmission.findUnique({
       where: { id: params.id },
       include: { form: true, documents: true }
     });
 
-    if (!submission) return new NextResponse("Not found", { status: 404 });
-    if (submission.status === "APPROVED") return new NextResponse("Already approved", { status: 400 });
+    if (!submission) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    if (submission.status === "APPROVED") return NextResponse.json({ error: "Already approved" }, { status: 400 });
 
     const submittedData = (submission.data as Record<string, any>) || {};
     const formFields = (submission.form.fields as any[]) || [];

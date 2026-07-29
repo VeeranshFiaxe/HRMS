@@ -1,6 +1,6 @@
 // src/app/auth/reset-password/page.tsx
 "use client";
-import { Suspense, useState } from "react";
+import { Suspense, useState, useRef, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Building2, Lock, Loader2, CheckCircle, Eye, EyeOff } from "lucide-react";
@@ -16,6 +16,11 @@ function ResetPasswordPageContent() {
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
+  const redirectRef = useRef<ReturnType<typeof setTimeout>>();
+
+  useEffect(() => {
+    return () => { if (redirectRef.current) clearTimeout(redirectRef.current); };
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,7 +35,7 @@ function ResetPasswordPageContent() {
         body: JSON.stringify({ token, password }),
       });
       const data = await res.json();
-      if (data.success) { setDone(true); setTimeout(() => router.push("/auth/login"), 3000); }
+      if (data.success) { setDone(true); redirectRef.current = setTimeout(() => router.push("/auth/login"), 3000); }
       else toast.error(data.error || "Failed to reset password");
     } finally { setLoading(false); }
   };

@@ -16,6 +16,7 @@ import {
 import toast from "react-hot-toast";
 import { cn, formatTime, getStatusColor, getStatusLabel } from "@/lib/utils";
 import { format } from "date-fns";
+import { formatInTimeZone } from "date-fns-tz";
 
 interface AttendanceCardProps {
   todayRecord: {
@@ -168,10 +169,10 @@ export function AttendanceCard({ todayRecord, schedule, timeFormat = "24h", time
 
           {/* Live time */}
           <p className="text-4xl font-bold text-slate-900 font-mono tracking-tight" suppressHydrationWarning>
-            {mounted ? (require("date-fns-tz").formatInTimeZone(currentTime, timezone, timeFormat === "12h" ? "hh:mm:ss a" : "HH:mm:ss")) : "--:--:--"}
+            {mounted ? formatInTimeZone(currentTime, timezone, timeFormat === "12h" ? "hh:mm:ss a" : "HH:mm:ss") : "--:--:--"}
           </p>
           <p className="text-sm text-slate-500 mt-0.5" suppressHydrationWarning>
-            {mounted ? (require("date-fns-tz").formatInTimeZone(currentTime, timezone, "EEEE, MMMM do")) : "Loading date..."}
+            {mounted ? formatInTimeZone(currentTime, timezone, "EEEE, MMMM do") : "Loading date..."}
           </p>
 
           {/* Schedule info */}

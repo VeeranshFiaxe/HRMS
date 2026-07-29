@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { AttendanceReportClient } from "@/components/admin/AttendanceReportClient";
-import { startOfMonth, endOfMonth, startOfDay, endOfDay, startOfWeek, endOfWeek } from "date-fns";
+import { startOfMonth, endOfMonth } from "date-fns";
 
 export const dynamic = "force-dynamic";
 

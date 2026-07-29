@@ -3,8 +3,8 @@
 
 import { useState } from "react";
 import { format } from "date-fns";
-import { cn, getStatusColor, getStatusLabel } from "@/lib/utils";
-import { User, Clock, CalendarDays, DollarSign, Settings } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { User, Clock, CalendarDays, Settings } from "lucide-react";
 
 interface ProfileData {
   user: {
@@ -48,19 +48,6 @@ interface ProfileData {
     endTime: string;
     isCustom: boolean;
   } | null;
-  salaryRule: {
-    name: string;
-    baseSalary: number;
-    paidLeaveDaysPerMonth: number;
-  } | null;
-  payrollPreview: {
-    netSalary: number;
-    baseSalary: number;
-    totalDeductions: number;
-    workedDays: number;
-    month: number;
-    year: number;
-  } | null;
   attendanceRules: {
     graceMinutes: number;
     minHoursFullDay: number;
@@ -75,7 +62,6 @@ const TABS = [
   { id: "overview", label: "Overview", icon: User },
   { id: "attendance", label: "Attendance", icon: Clock },
   { id: "leave", label: "Leave", icon: CalendarDays },
-  { id: "payroll", label: "Payroll", icon: DollarSign },
   { id: "schedule", label: "Schedule", icon: Settings },
 ];
 
@@ -135,7 +121,7 @@ export function ProfileTabs({ data }: { data: ProfileData }) {
           </div>
 
           {/* Quick stats */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             <div className="card p-4 text-center">
               <p className="text-2xl font-bold text-blue-600">{data.attendanceSummary.attendancePercentage}%</p>
               <p className="text-xs text-slate-500 mt-1">This Month Attendance</p>
@@ -147,12 +133,6 @@ export function ProfileTabs({ data }: { data: ProfileData }) {
             <div className="card p-4 text-center">
               <p className="text-2xl font-bold text-emerald-600">{data.leaveBalance?.available ?? "—"}</p>
               <p className="text-xs text-slate-500 mt-1">Leave Balance</p>
-            </div>
-            <div className="card p-4 text-center">
-              <p className="text-2xl font-bold text-slate-900">
-                {data.payrollPreview ? `₹${data.payrollPreview.netSalary.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : "—"}
-              </p>
-              <p className="text-xs text-slate-500 mt-1">Est. Net Pay</p>
             </div>
           </div>
         </div>
@@ -280,53 +260,6 @@ export function ProfileTabs({ data }: { data: ProfileData }) {
               </div>
             )}
           </div>
-        </div>
-      )}
-
-      {/* ─── Payroll Tab ─── */}
-      {activeTab === "payroll" && (
-        <div className="space-y-4">
-          {data.payrollPreview ? (
-            <>
-              <div className="grid grid-cols-3 gap-3">
-                <div className="card p-4 text-center">
-                  <p className="text-2xl font-bold text-slate-900">₹{data.payrollPreview.baseSalary.toLocaleString()}</p>
-                  <p className="text-xs text-slate-500 mt-1">Base Salary</p>
-                </div>
-                <div className="card p-4 text-center">
-                  <p className="text-2xl font-bold text-red-600">₹{data.payrollPreview.totalDeductions.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
-                  <p className="text-xs text-slate-500 mt-1">Deductions</p>
-                </div>
-                <div className="card p-4 text-center">
-                  <p className="text-2xl font-bold text-emerald-600">₹{data.payrollPreview.netSalary.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
-                  <p className="text-xs text-slate-500 mt-1">Est. Net Pay</p>
-                </div>
-              </div>
-              <div className="card p-5">
-                <p className="text-xs text-slate-500 text-center">
-                  Estimate for {new Date(data.payrollPreview.year, data.payrollPreview.month - 1).toLocaleString("default", { month: "long" })} {data.payrollPreview.year}
-                  · {data.payrollPreview.workedDays} days worked
-                </p>
-              </div>
-            </>
-          ) : (
-            <div className="card p-10 text-center">
-              <p className="text-slate-400 text-sm">No salary information configured</p>
-            </div>
-          )}
-          {data.salaryRule && (
-            <div className="card p-5 space-y-2">
-              <h3 className="font-semibold text-slate-900 text-sm">Salary Rule: {data.salaryRule.name}</h3>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-slate-500">Base Salary</span>
-                <span className="font-medium">₹{data.salaryRule.baseSalary.toLocaleString()}</span>
-              </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-slate-500">Paid Leaves/Month</span>
-                <span className="font-medium">{data.salaryRule.paidLeaveDaysPerMonth}</span>
-              </div>
-            </div>
-          )}
         </div>
       )}
 

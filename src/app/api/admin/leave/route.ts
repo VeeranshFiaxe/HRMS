@@ -32,8 +32,8 @@ export async function GET(req: NextRequest) {
     const y = parseInt(year || new Date().getFullYear().toString());
     if (month) {
       const m = parseInt(month);
-      where.fromDate = { lte: new Date(y, m, 0) }; // last day of month
-      where.toDate = { gte: new Date(y, m - 1, 1) }; // first day of month
+      where.fromDate = { lte: new Date(y, m + 1, 0) }; // last day of target month
+      where.toDate = { gte: new Date(y, m - 1, 1) }; // first day of target month
     } else {
       where.fromDate = { lte: new Date(y, 11, 31) };
       where.toDate = { gte: new Date(y, 0, 1) };

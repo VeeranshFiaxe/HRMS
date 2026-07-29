@@ -2,7 +2,7 @@
 "use client";
 
 import { useState } from "react";
-import { Save, Loader2, MapPin, Wifi, Shield, Plus, X } from "lucide-react";
+import { Save, Loader2, MapPin, Wifi, Shield, Plus, X, Trash2 } from "lucide-react";
 import toast from "react-hot-toast";
 
 interface Props {
@@ -39,6 +39,7 @@ interface Props {
 
 export function OfficeSettingsForm({ settings, rules, defaultSalaryRule }: Props) {
   const [loading, setLoading] = useState(false);
+  const [cleanupLoading, setCleanupLoading] = useState(false);
   const [tab, setTab] = useState<"geofence" | "ip" | "rules">("geofence");
 
   // Geofence & General state
@@ -192,6 +193,23 @@ export function OfficeSettingsForm({ settings, rules, defaultSalaryRule }: Props
     }
     setAllowedIps(ips => [...ips, trimmed]);
     setNewIp("");
+  };
+
+  const fixWeekendAttendance = async () => {
+    setCleanupLoading(true);
+    try {
+      const res = await fetch(`/api/admin/cleanup-attendance`, { method: "POST" });
+      const data = await res.json();
+      if (data.success) {
+        toast.success(`Cleaned up ${data.totalDeleted} incorrect attendance record(s) across all months`);
+      } else {
+        toast.error(data.error || "Cleanup failed");
+      }
+    } catch {
+      toast.error("Cleanup request failed");
+    } finally {
+      setCleanupLoading(false);
+    }
   };
 
   return (
@@ -399,6 +417,15 @@ export function OfficeSettingsForm({ settings, rules, defaultSalaryRule }: Props
           <button onClick={saveRules} disabled={loading} className="btn-primary">
             {loading ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
             Save Rules & Default Salary
+          </button>
+          <button
+            onClick={fixWeekendAttendance}
+            disabled={cleanupLoading}
+            className="btn-secondary flex items-center gap-2"
+            title="Removes incorrectly auto-backfilled ABSENT records on weekends/holidays across all months"
+          >
+            {cleanupLoading ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
+            Fix Weekend Attendance
           </button>
         </div>
       )}

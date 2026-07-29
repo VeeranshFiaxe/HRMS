@@ -2,12 +2,13 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import {
   format, startOfMonth, endOfMonth, eachDayOfInterval,
   startOfWeek, endOfWeek, isSameMonth, isToday, isSameDay, parseISO
 } from "date-fns";
-import { ChevronLeft, ChevronRight, Plus, X } from "lucide-react";
-import { cn, getStatusColor } from "@/lib/utils";
+import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { cn, getStatusColor, formatTime } from "@/lib/utils";
 import { LeaveRequestForm } from "@/components/employee/LeaveRequestForm";
 
 interface AttendanceRecord {
@@ -60,6 +61,8 @@ export function AttendanceCalendar({
 }: AttendanceCalendarProps) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
+
+  const router = useRouter();
 
   const [viewDate, setViewDate] = useState(new Date(year, month - 1, 1));
   const [tooltip, setTooltip] = useState<{ record: any; date: Date; dayEvents: typeof events; dayLeaves: LeaveEvent[] } | null>(null);
@@ -219,7 +222,6 @@ export function AttendanceCalendar({
               {tooltip.record.checkInAt && (
                 <p className="text-slate-500 mt-0.5">
                   {(() => {
-                    const { formatTime } = require("@/lib/utils");
                     const ci = formatTime(new Date(tooltip.record.checkInAt), timeFormat, timezone);
                     const co = tooltip.record.checkOutAt ? formatTime(new Date(tooltip.record.checkOutAt), timeFormat, timezone) : null;
                     return `In: ${ci}${co ? ` · Out: ${co}` : " · (No checkout)"}`;
@@ -230,8 +232,8 @@ export function AttendanceCalendar({
           )}
           {tooltip.dayLeaves.length > 0 && (
             <div className="mt-1.5 space-y-0.5">
-              {tooltip.dayLeaves.map((l, i) => (
-                <p key={i} className={cn("font-medium",
+              {tooltip.dayLeaves.map((l) => (
+                <p key={`${l.fromDate}-${l.leaveType}`} className={cn("font-medium",
                   l.status === "APPROVED" ? "text-blue-600" :
                   l.status === "PENDING" ? "text-amber-600" : "text-slate-400")}>
                   🏖 Leave ({l.leaveType}) · {l.status}
@@ -241,8 +243,8 @@ export function AttendanceCalendar({
           )}
           {tooltip.dayEvents.length > 0 && (
             <div className="mt-1.5 space-y-0.5">
-              {tooltip.dayEvents.map((ev, i) => (
-                <p key={i} className="text-purple-600 font-medium">📌 {ev.label}</p>
+              {tooltip.dayEvents.map((ev) => (
+                <p key={`${ev.date}-${ev.label}`} className="text-purple-600 font-medium">📌 {ev.label}</p>
               ))}
             </div>
           )}
@@ -272,7 +274,7 @@ export function AttendanceCalendar({
         <div className="mt-4">
           <LeaveRequestForm
             prefillDate={prefillDate}
-            onSuccess={() => { setShowLeaveForm(false); window.location.reload(); }}
+            onSuccess={() => { setShowLeaveForm(false); router.refresh(); }}
             onClose={() => setShowLeaveForm(false)}
           />
         </div>
