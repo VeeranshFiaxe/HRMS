@@ -5,7 +5,8 @@ import { Suspense, useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Building2, Mail, Lock, Eye, EyeOff, Loader2 } from "lucide-react";
+import Image from "next/image";
+import { Mail, Lock, Eye, EyeOff, Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
 
 function LoginPageContent() {
@@ -63,8 +64,8 @@ function LoginPageContent() {
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-14 h-14 bg-blue-500 rounded-2xl mb-4 shadow-lg shadow-blue-500/30">
-            <Building2 size={28} className="text-white" />
+          <div className="inline-flex items-center justify-center w-14 h-14 bg-blue-500 rounded-2xl mb-4 shadow-lg shadow-blue-500/30 p-2.5">
+            <Image src="/logo-mark.png" alt="Fiaxe" width={56} height={56} className="w-full h-full object-contain" />
           </div>
           <h1 className="text-2xl font-bold text-white">Fiaxe HRM</h1>
           <p className="text-slate-400 text-sm mt-1">Human Resource Management System</p>

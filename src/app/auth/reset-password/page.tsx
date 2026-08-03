@@ -3,7 +3,8 @@
 import { Suspense, useState, useRef, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Building2, Lock, Loader2, CheckCircle, Eye, EyeOff } from "lucide-react";
+import Image from "next/image";
+import { Lock, Loader2, CheckCircle, Eye, EyeOff } from "lucide-react";
 import toast from "react-hot-toast";
 
 function ResetPasswordPageContent() {
@@ -44,8 +45,8 @@ function ResetPasswordPageContent() {
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-14 h-14 bg-blue-500 rounded-2xl mb-4 shadow-lg shadow-blue-500/30">
-            <Building2 size={28} className="text-white" />
+          <div className="inline-flex items-center justify-center w-14 h-14 bg-blue-500 rounded-2xl mb-4 shadow-lg shadow-blue-500/30 p-2.5">
+            <Image src="/logo-mark.png" alt="Fiaxe" width={56} height={56} className="w-full h-full object-contain" />
           </div>
           <h1 className="text-2xl font-bold text-white">Fiaxe HRM</h1>
         </div>

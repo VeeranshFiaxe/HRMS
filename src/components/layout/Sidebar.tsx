@@ -3,6 +3,7 @@
 
 import React from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { cn } from "@/lib/utils";
@@ -120,8 +121,8 @@ export function Sidebar({ collapsed = false }: SidebarProps) {
       {/* Mobile Topbar */}
       <div className="md:hidden flex items-center justify-between bg-slate-900 text-white p-4 shrink-0">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center">
-            <Building2 size={18} />
+          <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center p-1.5">
+            <Image src="/logo-mark.png" alt="Fiaxe" width={32} height={32} className="w-full h-full object-contain" />
           </div>
           <div>
               <p className="font-bold text-sm">Fiaxe HRM</p>
@@ -151,8 +152,8 @@ export function Sidebar({ collapsed = false }: SidebarProps) {
       >
         {/* Logo */}
         <div className="flex items-center gap-3 px-4 py-5 border-b border-slate-800">
-          <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center flex-shrink-0">
-            <Building2 size={18} />
+          <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center flex-shrink-0 p-1.5">
+            <Image src="/logo-mark.png" alt="Fiaxe" width={32} height={32} className="w-full h-full object-contain" />
           </div>
           {!collapsed && (
             <div>
