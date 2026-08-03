@@ -173,6 +173,10 @@ model OfficeSettings {
   updatedAt       DateTime @updatedAt
   timezone        String   @default("Asia/Kolkata")
 
+  whatsappNotifyEnabled     Boolean @default(false)
+  whatsappCheckInTemplate   String  @default("✅ {name} checked in at {time}")
+  whatsappCheckOutTemplate  String  @default("❌ {name} checked out at {time}")
+
   @@map("office_settings")
 }
 

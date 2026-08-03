@@ -2,7 +2,7 @@
 "use client";
 
 import { useState } from "react";
-import { Save, Loader2, MapPin, Wifi, Shield, Plus, X, Trash2 } from "lucide-react";
+import { Save, Loader2, MapPin, Wifi, Shield, Plus, X, Trash2, MessageCircle } from "lucide-react";
 import toast from "react-hot-toast";
 
 interface Props {
@@ -15,6 +15,9 @@ interface Props {
     ipCheckEnabled: boolean;
     name: string;
     timezone?: string;
+    whatsappNotifyEnabled?: boolean;
+    whatsappCheckInTemplate?: string;
+    whatsappCheckOutTemplate?: string;
   } | null;
   rules: {
     lateStreakDays: number;
@@ -40,7 +43,7 @@ interface Props {
 export function OfficeSettingsForm({ settings, rules, defaultSalaryRule }: Props) {
   const [loading, setLoading] = useState(false);
   const [cleanupLoading, setCleanupLoading] = useState(false);
-  const [tab, setTab] = useState<"geofence" | "ip" | "rules">("geofence");
+  const [tab, setTab] = useState<"geofence" | "ip" | "rules" | "whatsapp">("geofence");
 
   // Geofence & General state
   const [geo, setGeo] = useState({
@@ -66,6 +69,13 @@ export function OfficeSettingsForm({ settings, rules, defaultSalaryRule }: Props
     autoCheckoutAfter: rules?.autoCheckoutAfter || "21:00",
     minHoursFullDay: rules?.minHoursFullDay?.toString() || "8",
     minHoursHalfDay: rules?.minHoursHalfDay?.toString() || "4",
+  });
+
+  // WhatsApp notification state
+  const [whatsapp, setWhatsapp] = useState({
+    enabled: settings?.whatsappNotifyEnabled ?? false,
+    checkInTemplate: settings?.whatsappCheckInTemplate || "✅ {name} checked in at {time}",
+    checkOutTemplate: settings?.whatsappCheckOutTemplate || "❌ {name} checked out at {time}",
   });
 
   // Linked Default Salary Rule state
@@ -184,6 +194,29 @@ export function OfficeSettingsForm({ settings, rules, defaultSalaryRule }: Props
     }
   };
 
+  const saveWhatsapp = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/office-settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          whatsappNotifyEnabled: whatsapp.enabled,
+          whatsappCheckInTemplate: whatsapp.checkInTemplate,
+          whatsappCheckOutTemplate: whatsapp.checkOutTemplate,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) toast.success("WhatsApp notification settings saved");
+      else toast.error(data.error || "Failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const renderPreview = (template: string) =>
+    template.replace(/\{name\}/g, "Priya Sharma").replace(/\{time\}/g, "09:42 AM");
+
   const addIp = () => {
     const trimmed = newIp.trim();
     if (!trimmed) return;
@@ -216,7 +249,7 @@ export function OfficeSettingsForm({ settings, rules, defaultSalaryRule }: Props
     <div className="space-y-4">
       {/* Tabs */}
       <div className="flex gap-1 bg-slate-100 p-1 rounded-xl w-fit">
-        {(["geofence", "ip", "rules"] as const).map(t => (
+        {(["geofence", "ip", "rules", "whatsapp"] as const).map(t => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -224,7 +257,7 @@ export function OfficeSettingsForm({ settings, rules, defaultSalaryRule }: Props
               tab === t ? "bg-white shadow-sm text-slate-900" : "text-slate-500 hover:text-slate-700"
             }`}
           >
-            {t === "ip" ? "IP Allowlist" : t === "rules" ? "Attendance Rules" : "General"}
+            {t === "ip" ? "IP Allowlist" : t === "rules" ? "Attendance Rules" : t === "whatsapp" ? "WhatsApp" : "General"}
           </button>
         ))}
       </div>
@@ -426,6 +459,66 @@ export function OfficeSettingsForm({ settings, rules, defaultSalaryRule }: Props
           >
             {cleanupLoading ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
             Fix Weekend Attendance
+          </button>
+        </div>
+      )}
+
+      {/* WhatsApp tab */}
+      {tab === "whatsapp" && (
+        <div className="card p-6 space-y-4">
+          <div className="flex items-center gap-2 mb-2">
+            <MessageCircle size={18} className="text-blue-500" />
+            <h3 className="font-semibold text-slate-900">WhatsApp Notifications</h3>
+          </div>
+
+          <p className="text-sm text-slate-500">
+            Sends a WhatsApp message straight from the server (via Evolution API) whenever an employee checks in or out — no external workflow tool involved.
+            The Evolution API connection is configured via server environment variables; everything below only controls whether notifications fire and what the message says.
+          </p>
+
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="whatsappEnabled"
+              checked={whatsapp.enabled}
+              onChange={e => setWhatsapp(w => ({ ...w, enabled: e.target.checked }))}
+              className="w-4 h-4 rounded border-slate-300 text-blue-600"
+            />
+            <label htmlFor="whatsappEnabled" className="text-sm text-slate-700">Enable WhatsApp check-in/out notifications</label>
+          </div>
+
+          <div>
+            <label className="label">Check-in message</label>
+            <input
+              className="input font-mono text-sm"
+              value={whatsapp.checkInTemplate}
+              onChange={e => setWhatsapp(w => ({ ...w, checkInTemplate: e.target.value }))}
+            />
+            <p className="text-xs text-slate-400 mt-1">
+              Preview: {renderPreview(whatsapp.checkInTemplate)}
+            </p>
+          </div>
+
+          <div>
+            <label className="label">Check-out message</label>
+            <input
+              className="input font-mono text-sm"
+              value={whatsapp.checkOutTemplate}
+              onChange={e => setWhatsapp(w => ({ ...w, checkOutTemplate: e.target.value }))}
+            />
+            <p className="text-xs text-slate-400 mt-1">
+              Preview: {renderPreview(whatsapp.checkOutTemplate)}
+            </p>
+          </div>
+
+          <p className="text-xs text-slate-400">
+            Available placeholders: <code className="font-mono bg-slate-100 px-1 py-0.5 rounded">{"{name}"}</code> and{" "}
+            <code className="font-mono bg-slate-100 px-1 py-0.5 rounded">{"{time}"}</code>.
+          </p>
+
+          <button onClick={saveWhatsapp} disabled={loading} className="btn-primary">
+            {loading ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+            Save WhatsApp Settings
           </button>
         </div>
       )}

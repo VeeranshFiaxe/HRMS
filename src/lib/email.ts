@@ -18,7 +18,7 @@ export async function sendPasswordResetEmail(
   name: string,
   resetUrl: string
 ): Promise<void> {
-  const appName = process.env.APP_NAME || "HRMS";
+  const appName = process.env.APP_NAME || "Fiaxe HRM";
 
   await transporter.sendMail({
     from: process.env.SMTP_FROM || `${appName} <noreply@company.com>`,
@@ -65,7 +65,7 @@ export async function sendWelcomeEmail(
   name: string,
   tempPassword: string
 ): Promise<void> {
-  const appName = process.env.APP_NAME || "HRMS";
+  const appName = process.env.APP_NAME || "Fiaxe HRM";
   const loginUrl = `${process.env.APP_URL || "https://hrms-fiaxe.netlify.app"}/auth/login`;
 
   await transporter.sendMail({

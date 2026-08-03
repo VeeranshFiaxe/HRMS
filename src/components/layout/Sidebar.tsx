@@ -124,7 +124,7 @@ export function Sidebar({ collapsed = false }: SidebarProps) {
             <Building2 size={18} />
           </div>
           <div>
-            <p className="font-bold text-sm">CompanyHR</p>
+              <p className="font-bold text-sm">Fiaxe HRM</p>
           </div>
         </div>
         <button onClick={() => setIsOpen(!isOpen)} className="p-1 text-slate-300 hover:text-white">
@@ -156,7 +156,7 @@ export function Sidebar({ collapsed = false }: SidebarProps) {
           </div>
           {!collapsed && (
             <div>
-              <p className="font-bold text-sm">CompanyHR</p>
+            <p className="font-bold text-sm">Fiaxe HRM</p>
               <p className="text-slate-400 text-xs">
                 {isAdmin ? "Admin Portal" : "Employee Portal"}
               </p>

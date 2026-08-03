@@ -21,10 +21,12 @@ export async function PUT(req: NextRequest) {
     const {
       name, latitude, longitude, radiusMeters,
       geofenceEnabled, allowedIps, ipCheckEnabled, timezone,
+      whatsappNotifyEnabled, whatsappCheckInTemplate, whatsappCheckOutTemplate,
     } = body;
     const data: Record<string, unknown> = {
       name, latitude, longitude, radiusMeters,
       geofenceEnabled, allowedIps, ipCheckEnabled, timezone,
+      whatsappNotifyEnabled, whatsappCheckInTemplate, whatsappCheckOutTemplate,
     };
     Object.keys(data).forEach((k) => data[k] === undefined && delete data[k]);
 

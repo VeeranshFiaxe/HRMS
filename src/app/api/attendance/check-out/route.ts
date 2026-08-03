@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { processCheckOut } from "@/lib/attendance-engine";
 import { getClientIp } from "@/lib/utils";
+import { notifyAttendanceEvent } from "@/lib/notify-whatsapp";
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -23,6 +24,9 @@ export async function POST(req: NextRequest) {
     if (!result.success) {
       return NextResponse.json(result, { status: 422 });
     }
+
+    // Fire-and-forget — never awaited inline, never affects this response
+    void notifyAttendanceEvent({ name: session.user.name, type: "CHECK_OUT", time: new Date() });
 
     return NextResponse.json(result);
   } catch (error) {
