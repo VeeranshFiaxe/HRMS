@@ -24,6 +24,18 @@ export function LeaveRequestForm({ prefillDate, onSuccess, onClose }: Props) {
   const [leaveType, setLeaveType] = useState("CASUAL");
   const [reason, setReason] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [isHalfDay, setIsHalfDay] = useState(false);
+  const [halfDaySession, setHalfDaySession] = useState<"FIRST_HALF" | "SECOND_HALF">("FIRST_HALF");
+
+  const handleFromDateChange = (value: string) => {
+    setFromDate(value);
+    if (isHalfDay) setToDate(value);
+  };
+
+  const handleHalfDayToggle = (checked: boolean) => {
+    setIsHalfDay(checked);
+    if (checked) setToDate(fromDate);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,7 +48,13 @@ export function LeaveRequestForm({ prefillDate, onSuccess, onClose }: Props) {
       const res = await fetch("/api/leave", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fromDate, toDate, leaveType, reason }),
+        body: JSON.stringify({
+          fromDate,
+          toDate: isHalfDay ? fromDate : toDate,
+          leaveType,
+          reason,
+          session: isHalfDay ? halfDaySession : "FULL_DAY",
+        }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to submit");
@@ -71,7 +89,7 @@ export function LeaveRequestForm({ prefillDate, onSuccess, onClose }: Props) {
               type="date"
               className="input"
               value={fromDate}
-              onChange={e => setFromDate(e.target.value)}
+              onChange={e => handleFromDateChange(e.target.value)}
               min={new Date().toISOString().slice(0, 10)}
               required
             />
@@ -81,13 +99,35 @@ export function LeaveRequestForm({ prefillDate, onSuccess, onClose }: Props) {
             <input
               type="date"
               className="input"
-              value={toDate}
+              value={isHalfDay ? fromDate : toDate}
               onChange={e => setToDate(e.target.value)}
               min={fromDate || new Date().toISOString().slice(0, 10)}
+              disabled={isHalfDay}
               required
             />
           </div>
         </div>
+
+        <div className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            id="halfDayToggle"
+            checked={isHalfDay}
+            onChange={e => handleHalfDayToggle(e.target.checked)}
+            className="w-4 h-4 rounded border-slate-300 text-blue-600"
+          />
+          <label htmlFor="halfDayToggle" className="text-sm text-slate-700">Half Day (single day only)</label>
+        </div>
+
+        {isHalfDay && (
+          <div>
+            <label className="label">Which Half</label>
+            <select className="input" value={halfDaySession} onChange={e => setHalfDaySession(e.target.value as "FIRST_HALF" | "SECOND_HALF")}>
+              <option value="FIRST_HALF">First Half</option>
+              <option value="SECOND_HALF">Second Half</option>
+            </select>
+          </div>
+        )}
 
         <div>
           <label className="label">Leave Type</label>

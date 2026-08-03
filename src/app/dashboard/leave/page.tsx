@@ -3,7 +3,8 @@ import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getOrCreateLeaveBalance, getUsedLeavesForMonth } from "@/lib/leave-engine";
+import { getOrCreateLeaveBalance, getUsedLeavesForMonth, getMonthlyEntitlement } from "@/lib/leave-engine";
+import { isInProbation, getProbationEndDate } from "@/lib/probation";
 import { LeaveRequestForm } from "@/components/employee/LeaveRequestForm";
 import { LeaveHistory } from "@/components/employee/LeaveHistory";
 import { RegularizationForm } from "@/components/employee/RegularizationForm";
@@ -67,11 +68,13 @@ export default async function EmployeeLeavePage() {
   // User info for employment type
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { employmentType: true, salaryRules: { select: { paidLeaveDaysPerMonth: true } } },
+    select: { employmentType: true, joiningDate: true, probationMonths: true },
   });
 
   const isIntern = user?.employmentType === "INTERN";
-  const monthlyEntitlement = isIntern ? (user?.salaryRules?.paidLeaveDaysPerMonth ?? 2) : null;
+  const monthlyEntitlement = isIntern && user ? await getMonthlyEntitlement(userId, year, month) : null;
+  const onProbation = user ? isInProbation(user, now) : false;
+  const probationEndDate = user ? getProbationEndDate(user) : null;
 
   return (
     <div className="space-y-6 max-w-3xl">
@@ -79,6 +82,12 @@ export default async function EmployeeLeavePage() {
         <h1 className="page-title">My Requests</h1>
         <p className="page-subtitle">Apply for leave, request attendance regularisation, and view history</p>
       </div>
+
+      {onProbation && probationEndDate && (
+        <div className="card p-4 bg-amber-50 border-amber-200 text-sm text-amber-800">
+          You're on probation until <strong>{probationEndDate.toLocaleDateString()}</strong>. Paid leave is unavailable until then, but you can still apply for unpaid leave.
+        </div>
+      )}
 
       {/* Balance cards */}
       <div className={`grid gap-4 ${isIntern ? "grid-cols-2" : "grid-cols-3"}`}>

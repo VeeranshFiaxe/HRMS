@@ -5,11 +5,13 @@ import { prisma } from "@/lib/prisma";
 import { startOfDay, eachDayOfInterval, parseISO } from "date-fns";
 import { isWorkingDay } from "@/lib/utils";
 import { getEffectiveSchedule } from "@/lib/attendance-engine";
+import { isInProbation, getProbationEndDate, getFullTimeAnnualEntitlement } from "@/lib/probation";
 
 // ─── Types ──────────────────────────────────────────────────────
 
 export type LeaveTypeValue = "CASUAL" | "SICK" | "ANNUAL" | "UNPAID";
 export type LeaveStatusValue = "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED";
+export type LeaveSessionValue = "FULL_DAY" | "FIRST_HALF" | "SECOND_HALF";
 
 export interface ApplyLeaveRequest {
   userId: string;
@@ -17,6 +19,7 @@ export interface ApplyLeaveRequest {
   toDate: Date;
   reason?: string;
   leaveType?: LeaveTypeValue;
+  session?: LeaveSessionValue;
 }
 
 export interface ApplyLeaveResult {
@@ -82,6 +85,12 @@ export async function getOrCreateLeaveBalance(userId: string, year: number): Pro
     allocated = rule.paidLeaveDaysPerMonth * 12;
   }
 
+  // Full-time entitlement is pro-rated based on joining date + probation
+  // (leave eligibility date), rather than a flat annual amount.
+  if (user.employmentType === "FULL_TIME") {
+    allocated = getFullTimeAnnualEntitlement(user, year, allocated);
+  }
+
   // Check existing balance
   const existing = await prisma.leaveBalance.findFirst({
     where: { userId, year, month: null },
@@ -106,7 +115,7 @@ export async function getOrCreateLeaveBalance(userId: string, year: number): Pro
   });
 }
 
-/** Get effective monthly entitlement for intern (cap to 2/month) */
+/** Get effective monthly entitlement for intern (2/month, no rollover) */
 export async function getMonthlyEntitlement(userId: string, year: number, month: number): Promise<number> {
   const user = await prisma.user.findUnique({
     where: { id: userId },
@@ -115,6 +124,10 @@ export async function getMonthlyEntitlement(userId: string, year: number, month:
   if (!user) return 0;
 
   if (user.employmentType === "INTERN") {
+    // No paid leave at all while the entire month falls within probation.
+    const monthEnd = new Date(year, month, 0);
+    if (getProbationEndDate(user) > monthEnd) return 0;
+
     // Interns: 2 paid leaves per month, no rollover
     const override = user.salaryRuleOverride;
     const rule = user.salaryRules;
@@ -123,7 +136,8 @@ export async function getMonthlyEntitlement(userId: string, year: number, month:
     return 2;
   }
 
-  // For others, return annual balance remaining ÷ remaining months (or full allocated)
+  // For others, return the full remaining annual balance (allocated + carried - used),
+  // not a per-month figure — the "monthly" framing here only applies to interns.
   const balance = await getOrCreateLeaveBalance(userId, year);
   return Math.max(0, balance.allocated + balance.carried - balance.used);
 }
@@ -132,7 +146,7 @@ export async function getMonthlyEntitlement(userId: string, year: number, month:
 
 export async function applyForLeave(req: ApplyLeaveRequest): Promise<ApplyLeaveResult> {
   try {
-    const { userId, fromDate, toDate, reason, leaveType = "CASUAL" } = req;
+    const { userId, fromDate, toDate, reason, leaveType = "CASUAL", session = "FULL_DAY" } = req;
     const isPaid = isPaidLeave(leaveType);
 
     // Validate dates
@@ -140,10 +154,27 @@ export async function applyForLeave(req: ApplyLeaveRequest): Promise<ApplyLeaveR
       return { success: false, error: "From date must be before or equal to to date." };
     }
 
-    // Count working days
-    const totalDays = await countWorkingDays(userId, fromDate, toDate);
-    if (totalDays === 0) {
-      return { success: false, error: "The selected date range contains no working days." };
+    // Half-day leave is only meaningful for a single day — this is a hard
+    // server-side invariant (not just a UI convention), since payroll later
+    // trusts totalDays as an accurate fractional count.
+    const isHalfDaySession = session !== "FULL_DAY";
+    if (isHalfDaySession && startOfDay(fromDate).getTime() !== startOfDay(toDate).getTime()) {
+      return { success: false, error: "Half-day leave can only be applied for a single day." };
+    }
+
+    // Count working days / determine totalDays
+    let totalDays: number;
+    if (isHalfDaySession) {
+      const workingDayCount = await countWorkingDays(userId, fromDate, fromDate);
+      if (workingDayCount === 0) {
+        return { success: false, error: "The selected date is not a working day." };
+      }
+      totalDays = 0.5;
+    } else {
+      totalDays = await countWorkingDays(userId, fromDate, toDate);
+      if (totalDays === 0) {
+        return { success: false, error: "The selected date range contains no working days." };
+      }
     }
 
     // Check for overlapping leave requests (PENDING or APPROVED)
@@ -160,13 +191,24 @@ export async function applyForLeave(req: ApplyLeaveRequest): Promise<ApplyLeaveR
       return { success: false, error: "You already have a leave request for this period." };
     }
 
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) return { success: false, error: "User not found." };
+
+    // Probation gate — paid leave is unavailable until probation ends;
+    // unpaid leave (isPaid=false) is unaffected by this check.
+    if (isPaid && isInProbation(user, fromDate)) {
+      const eligDate = getProbationEndDate(user);
+      return {
+        success: false,
+        error: `Paid leave is not available during your probation period, which ends on ${eligDate.toISOString().slice(0, 10)}. You may still apply for unpaid leave.`,
+      };
+    }
+
     // Check paid leave balance
     if (isPaid) {
-      const now = new Date();
       const year = fromDate.getFullYear();
-      const user = await prisma.user.findUnique({ where: { id: userId } });
 
-      if (user?.employmentType === "INTERN") {
+      if (user.employmentType === "INTERN") {
         // Check monthly cap
         const month = fromDate.getMonth() + 1;
         const usedThisMonth = await getUsedLeavesForMonth(userId, year, month);
@@ -200,6 +242,7 @@ export async function applyForLeave(req: ApplyLeaveRequest): Promise<ApplyLeaveR
         leaveType: leaveType as any,
         isPaid,
         totalDays,
+        session: session as any,
         status: "PENDING",
       },
     });
@@ -292,6 +335,8 @@ export async function approveLeave(requestId: string, adminId: string, note?: st
     });
     const holidayDates = holidays.map((h) => h.date.toDateString());
 
+    const isHalfDayLeave = request.session !== "FULL_DAY";
+
     for (const day of days) {
       if (holidayDates.includes(day.toDateString())) continue;
       if (!isWorkingDay(day, sched)) continue;
@@ -304,7 +349,7 @@ export async function approveLeave(requestId: string, adminId: string, note?: st
           date: day,
           status: "ON_LEAVE",
           isLate: false,
-          isHalfDay: false,
+          isHalfDay: isHalfDayLeave,
           lateMinutes: 0,
           overrideNote: `Approved leave: ${request.leaveType}${request.isPaid ? " (Paid)" : " (Unpaid)"}`,
           overriddenBy: adminId,
@@ -312,6 +357,7 @@ export async function approveLeave(requestId: string, adminId: string, note?: st
         },
         update: {
           status: "ON_LEAVE",
+          isHalfDay: isHalfDayLeave,
           overrideNote: `Approved leave: ${request.leaveType}${request.isPaid ? " (Paid)" : " (Unpaid)"}`,
           overriddenBy: adminId,
           overriddenAt: now,
@@ -461,7 +507,14 @@ export async function getUsedLeavesForMonth(userId: string, year: number, month:
 
   let total = 0;
   for (const l of leaves) {
-    // Count only days within this month
+    // Trust the stored totalDays (correctly captures half-day amounts) when the
+    // request is fully within the month; only recompute for a boundary-crossing
+    // request (always a full-day multi-day request — half-day requests are
+    // always single-day, so they never hit this fallback).
+    if (l.fromDate >= monthStart && l.toDate <= monthEnd) {
+      total += l.totalDays;
+      continue;
+    }
     const from = l.fromDate < monthStart ? monthStart : l.fromDate;
     const to = l.toDate > monthEnd ? monthEnd : l.toDate;
     const days = await countWorkingDays(userId, from, to);
@@ -489,12 +542,83 @@ export async function getLeaveSummaryForPayroll(userId: string, year: number, mo
   let unpaidLeaveDays = 0;
 
   for (const l of leaves) {
-    const from = l.fromDate < monthStart ? monthStart : l.fromDate;
-    const to = l.toDate > monthEnd ? monthEnd : l.toDate;
-    const days = await countWorkingDays(userId, from, to);
+    let days: number;
+    if (l.fromDate >= monthStart && l.toDate <= monthEnd) {
+      days = l.totalDays;
+    } else {
+      const from = l.fromDate < monthStart ? monthStart : l.fromDate;
+      const to = l.toDate > monthEnd ? monthEnd : l.toDate;
+      days = await countWorkingDays(userId, from, to);
+    }
     if (l.isPaid) paidLeaveDays += days;
     else unpaidLeaveDays += days;
   }
 
   return { paidLeaveDays, unpaidLeaveDays };
+}
+
+// ─── Automatic absence → paid leave utilization (interns only) ────
+
+/**
+ * When an intern is marked ABSENT or HALF_DAY without submitting a leave
+ * request, automatically draw down their available paid leave for that day
+ * instead of requiring a manual application. Returns true if the day was
+ * converted to paid leave (caller should set the attendance record to
+ * ON_LEAVE); false if it should remain an unpaid absence/half-day.
+ */
+export async function tryAutoUtilizeInternLeave(userId: string, date: Date, amount: 1 | 0.5): Promise<boolean> {
+  try {
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user || user.employmentType !== "INTERN") return false;
+    if (isInProbation(user, date)) return false;
+
+    const day = startOfDay(date);
+
+    // Idempotency: don't double-process a day that already has a pending or
+    // approved leave request covering it (a rejected/cancelled request
+    // shouldn't permanently block the automatic safety net).
+    const existing = await prisma.leaveRequest.findFirst({
+      where: {
+        userId,
+        status: { in: ["PENDING", "APPROVED"] },
+        fromDate: { lte: day },
+        toDate: { gte: day },
+      },
+    });
+    if (existing) return false;
+
+    const year = day.getFullYear();
+    const month = day.getMonth() + 1;
+    const usedThisMonth = await getUsedLeavesForMonth(userId, year, month);
+    const entitlement = await getMonthlyEntitlement(userId, year, month);
+    if (usedThisMonth + amount > entitlement) return false;
+
+    const request = await prisma.leaveRequest.create({
+      data: {
+        userId,
+        fromDate: day,
+        toDate: day,
+        reason: "Auto-utilized paid leave (system)",
+        leaveType: "CASUAL",
+        isPaid: true,
+        totalDays: amount,
+        session: amount === 0.5 ? "FIRST_HALF" : "FULL_DAY",
+        status: "APPROVED",
+      },
+    });
+
+    await prisma.auditLog.create({
+      data: {
+        userId,
+        action: "LEAVE_REQUEST_CREATE",
+        description: `System auto-utilized ${amount} paid leave day(s) for absence on ${day.toISOString().slice(0, 10)}`,
+        metadata: { requestId: request.id, totalDays: amount, auto: true },
+      },
+    });
+
+    return true;
+  } catch (error) {
+    console.error("tryAutoUtilizeInternLeave error:", error);
+    return false;
+  }
 }

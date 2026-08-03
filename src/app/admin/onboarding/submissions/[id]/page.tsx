@@ -12,6 +12,8 @@ export default function SubmissionReview({ params }: { params: { id: string } })
   const [saving, setSaving] = useState(false);
   const [submission, setSubmission] = useState<any>(null);
   const [formData, setFormData] = useState<any>({});
+  const [probationMonths, setProbationMonths] = useState(3);
+  const [probationTouched, setProbationTouched] = useState(false);
 
   useEffect(() => {
     fetchSubmission();
@@ -29,6 +31,20 @@ export default function SubmissionReview({ params }: { params: { id: string } })
       setLoading(false);
     }
   };
+
+  // Prefill probation default (1 for INTERN, 3 otherwise) based on the mapped
+  // employmentType field, unless the admin has already changed it manually.
+  const mappedEmploymentType = (() => {
+    if (!submission) return undefined;
+    const field = (submission.form.fields || []).find((f: any) => f.profileMapping === "basicInfo.employmentType");
+    return field ? formData[field.id] : undefined;
+  })();
+
+  useEffect(() => {
+    if (probationTouched || !submission) return;
+    setProbationMonths(mappedEmploymentType === "INTERN" ? 1 : 3);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [submission, mappedEmploymentType]);
 
   const handleFieldChange = (key: string, value: any) => {
     setFormData((prev: any) => ({ ...prev, [key]: value }));
@@ -64,6 +80,8 @@ export default function SubmissionReview({ params }: { params: { id: string } })
 
       const res = await fetch(`/api/admin/onboarding/submissions/${params.id}/approve`, {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ probationMonths }),
       });
       const data = await res.json();
       if (data.success) {
@@ -131,6 +149,22 @@ export default function SubmissionReview({ params }: { params: { id: string } })
           </div>
         )}
       </div>
+
+      {submission.status === "PENDING" && (
+        <div className="card p-4 flex items-center gap-4">
+          <div className="flex-1">
+            <label className="label">Probation Period (months)</label>
+            <p className="text-xs text-slate-400 mb-1">Defaults to 1 for interns, 3 otherwise. Paid leave is unavailable until probation ends.</p>
+          </div>
+          <input
+            type="number"
+            min={0}
+            className="input w-24"
+            value={probationMonths}
+            onChange={e => { setProbationTouched(true); setProbationMonths(parseInt(e.target.value) || 0); }}
+          />
+        </div>
+      )}
 
       <div className="grid grid-cols-3 gap-6">
         <div className="col-span-2 space-y-6">

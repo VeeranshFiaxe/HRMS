@@ -361,6 +361,18 @@ export async function processCheckOut(req: CheckOutRequest): Promise<CheckOutRes
       // >= minHoursFullDay: keep existing status (PRESENT, LATE, etc.)
     }
 
+    // 4b. Interns: try to auto-utilize available paid leave instead of an
+    // unpaid ABSENT/HALF_DAY, so they don't need to manually apply for leave.
+    if (newStatus === "ABSENT" || newStatus === "HALF_DAY") {
+      const { tryAutoUtilizeInternLeave } = await import("@/lib/leave-engine");
+      const amount = newStatus === "ABSENT" ? 1 : 0.5;
+      const converted = await tryAutoUtilizeInternLeave(req.userId, today, amount);
+      if (converted) {
+        newStatus = "ON_LEAVE";
+        newIsHalfDay = amount === 0.5;
+      }
+    }
+
     // 5. Update record with check-out time and hoursWorked
     const updated = await prisma.attendanceRecord.update({
       where: { id: record.id },
@@ -522,14 +534,42 @@ export async function getAttendanceSummary(userId: string, year: number, month: 
   }
 
   if (missingDates.length > 0) {
-    const newAbsences = missingDates.map(date => ({
-      userId,
-      date,
-      status: AttendanceStatus.ABSENT,
-      overrideNote: "Auto-backfilled missing attendance",
-    }));
-    await prisma.attendanceRecord.createMany({ data: newAbsences, skipDuplicates: true });
-    
+    const user = await prisma.user.findUnique({ where: { id: userId }, select: { employmentType: true } });
+
+    if (user?.employmentType === "INTERN") {
+      // Interns: try to auto-utilize paid leave for each missing day instead
+      // of a blind bulk-insert, since entitlement depletes as the month goes.
+      const { tryAutoUtilizeInternLeave } = await import("@/lib/leave-engine");
+      for (const date of missingDates) {
+        const converted = await tryAutoUtilizeInternLeave(userId, date, 1);
+        if (!converted) {
+          await prisma.attendanceRecord.createMany({
+            data: [{ userId, date, status: AttendanceStatus.ABSENT, overrideNote: "Auto-backfilled missing attendance" }],
+            skipDuplicates: true,
+          });
+        }
+        // If converted, tryAutoUtilizeInternLeave doesn't itself write an
+        // AttendanceRecord — leave the day without one here; approveLeave's
+        // upsert path isn't invoked for auto-leave, so create the ON_LEAVE
+        // record directly.
+        if (converted) {
+          await prisma.attendanceRecord.upsert({
+            where: { userId_date: { userId, date } },
+            create: { userId, date, status: "ON_LEAVE", isHalfDay: false, overrideNote: "Auto-utilized paid leave (system)" },
+            update: { status: "ON_LEAVE", isHalfDay: false, overrideNote: "Auto-utilized paid leave (system)" },
+          });
+        }
+      }
+    } else {
+      const newAbsences = missingDates.map(date => ({
+        userId,
+        date,
+        status: AttendanceStatus.ABSENT,
+        overrideNote: "Auto-backfilled missing attendance",
+      }));
+      await prisma.attendanceRecord.createMany({ data: newAbsences, skipDuplicates: true });
+    }
+
     const updatedRecords = await prisma.attendanceRecord.findMany({
       where: {
         userId,
@@ -548,7 +588,9 @@ export async function getAttendanceSummary(userId: string, year: number, month: 
   const lateDays = workingRecords.filter((r) => r.status === "LATE").length;
   const halfDays = workingRecords.filter((r) => r.status === "HALF_DAY").length;
   const absentDays = workingRecords.filter((r) => r.status === "ABSENT").length;
-  const onLeaveDays = workingRecords.filter((r) => r.status === "ON_LEAVE").length;
+  const onLeaveDays = workingRecords
+    .filter((r) => r.status === "ON_LEAVE")
+    .reduce((sum, r) => sum + (r.isHalfDay ? 0.5 : 1), 0);
 
   // Total hours worked across all checked-in records (working days only)
   const totalHoursWorked = workingRecords.reduce((sum, r) => {

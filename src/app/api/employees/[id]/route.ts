@@ -30,6 +30,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       department, designation, phone, isActive, timeFormat,
       dateOfBirth, joiningDate, exitDate,
       emergencyContactName, emergencyContactNumber,
+      probationMonths,
     } = body;
 
     const isAdmin = session.user.role === "ADMIN";
@@ -52,6 +53,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
         ...(isAdmin && email !== undefined && { email }),
         ...(isAdmin && role !== undefined && { role }),
         ...(isAdmin && employmentType !== undefined && { employmentType }),
+        ...(isAdmin && probationMonths !== undefined && { probationMonths: probationMonths === null ? null : parseInt(probationMonths) }),
         ...(isAdmin && department !== undefined && { department }),
         ...(isAdmin && designation !== undefined && { designation }),
         ...(isAdmin && isActive !== undefined && { isActive }),

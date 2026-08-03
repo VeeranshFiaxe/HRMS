@@ -562,6 +562,7 @@ export function EditEmployeeForm({ employee, schedules, salaryRulesList }: EditE
     role: employee.role || "EMPLOYEE",
     employmentType: employee.employmentType || "FULL_TIME",
     isActive: employee.isActive,
+    probationMonths: employee.probationMonths != null ? String(employee.probationMonths) : "",
   });
 
   // Schedule form
@@ -611,6 +612,7 @@ export function EditEmployeeForm({ employee, schedules, salaryRulesList }: EditE
           dateOfBirth: profile.dateOfBirth || null,
           joiningDate: profile.joiningDate || null,
           exitDate: profile.exitDate || null,
+          probationMonths: profile.probationMonths.trim() === "" ? null : parseInt(profile.probationMonths),
           companyScheduleId: schedule.assignedId === "default" ? null : schedule.assignedId,
           salaryRulesId: salary.assignedId === "default" ? null : salary.assignedId,
         }),
@@ -866,6 +868,20 @@ export function EditEmployeeForm({ employee, schedules, salaryRulesList }: EditE
               <label className="label">Date of Joining</label>
               <input type="date" className="input" value={profile.joiningDate} onChange={e => setProfile(p => ({ ...p, joiningDate: e.target.value }))} />
             </div>
+          </div>
+
+          {/* Probation Period */}
+          <div>
+            <label className="label">Probation Period (months)</label>
+            <input
+              type="number"
+              min={0}
+              className="input"
+              placeholder={profile.employmentType === "INTERN" ? "Default: 1" : "Default: 3"}
+              value={profile.probationMonths}
+              onChange={e => setProfile(p => ({ ...p, probationMonths: e.target.value }))}
+            />
+            <p className="text-xs text-slate-400 mt-1">Leave blank to use the default (1 month for interns, 3 months otherwise). Paid leave is unavailable until probation ends.</p>
           </div>
 
           {/* Exit Date */}

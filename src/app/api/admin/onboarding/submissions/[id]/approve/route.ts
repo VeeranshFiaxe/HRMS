@@ -48,6 +48,10 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     const session = await getServerSession(authOptions);
     if (!session || session.user.role !== "ADMIN") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
+    const body = await req.json().catch(() => ({}));
+    const probationMonths =
+      Number.isInteger(body?.probationMonths) && body.probationMonths > 0 ? body.probationMonths : undefined;
+
     const submission = await prisma.onboardingSubmission.findUnique({
       where: { id: params.id },
       include: { form: true, documents: true }
@@ -110,6 +114,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
         joiningDate: userData.joiningDate || new Date(),
         emergencyContactName: userData.emergencyContactName || null,
         emergencyContactNumber: userData.emergencyContactNumber || null,
+        probationMonths,
       }
     });
 

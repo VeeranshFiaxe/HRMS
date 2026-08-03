@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
-    const { fromDate, toDate, reason, leaveType } = body;
+    const { fromDate, toDate, reason, leaveType, session: leaveSession } = body;
 
     if (!fromDate || !toDate) {
       return NextResponse.json({ error: "fromDate and toDate are required" }, { status: 400 });
@@ -51,6 +51,7 @@ export async function POST(req: NextRequest) {
       toDate: new Date(toDate),
       reason,
       leaveType: leaveType || "CASUAL",
+      session: leaveSession || "FULL_DAY",
     });
 
     if (!result.success) {

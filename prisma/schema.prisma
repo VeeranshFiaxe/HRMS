@@ -34,6 +34,7 @@ model User {
   companyScheduleId      String?
   salaryRulesId          String?
   dateOfBirth            DateTime?               @db.Date
+  probationMonths        Int?
   announcements          Announcement[]
   attendanceRecords      AttendanceRecord[]
   auditLogs              AuditLog[]
@@ -245,7 +246,8 @@ model LeaveRequest {
   cancelledBy String?
   isPaid      Boolean     @default(true)
   leaveType   LeaveType   @default(CASUAL)
-  totalDays   Int         @default(1)
+  totalDays   Float       @default(1)
+  session     LeaveSession @default(FULL_DAY)
   status      LeaveStatus @default(PENDING)
   user        User        @relation("UserLeaveRequests", fields: [userId], references: [id], onDelete: Cascade)
 
@@ -464,6 +466,12 @@ enum LeaveType {
   SICK
   ANNUAL
   UNPAID
+}
+
+enum LeaveSession {
+  FULL_DAY
+  FIRST_HALF
+  SECOND_HALF
 }
 
 enum RegularizationStatus {

@@ -23,6 +23,7 @@ export async function notifyAttendanceEvent(params: {
   try {
     const settings = await prisma.officeSettings.findFirst({
       select: {
+        timezone: true,
         whatsappNotifyEnabled: true,
         whatsappCheckInTemplate: true,
         whatsappCheckOutTemplate: true,
@@ -33,6 +34,7 @@ export async function notifyAttendanceEvent(params: {
     const time = params.time.toLocaleTimeString("en-IN", {
       hour: "2-digit",
       minute: "2-digit",
+      timeZone: settings.timezone || "Asia/Kolkata",
     });
 
     const template =
