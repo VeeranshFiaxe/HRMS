@@ -66,21 +66,50 @@ export function AttendanceCard({ todayRecord, schedule, timeFormat = "24h", time
     setGeoStatus("fetching");
     setGeoError(null);
 
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-        setGeoStatus("granted");
-      },
-      (err) => {
-        setGeoStatus("denied");
-        setGeoError(
-          err.code === 1
-            ? "Location permission denied."
-            : "Could not get your location."
-        );
-      },
-      { enableHighAccuracy: true, timeout: 3000, maximumAge: 60000 }
-    );
+    const onSuccess = (pos: GeolocationPosition) => {
+      setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+      setGeoStatus("granted");
+    };
+
+    const onFinalError = (err: GeolocationPositionError) => {
+      setGeoStatus("denied");
+      setGeoError(
+        err.code === 1
+          ? "Location permission denied."
+          : "Could not get your location. Make sure GPS/location is turned on."
+      );
+    };
+
+    // Permission denial is final and should fail fast. Timeouts and transient
+    // "position unavailable" errors are common on mobile GPS (cold fix can take
+    // 10s+), so retry a few times with backoff before giving up, and fall back
+    // to network-based positioning (enableHighAccuracy: false) if a high-accuracy
+    // GPS fix keeps timing out.
+    const maxAttempts = 4;
+    let attempt = 0;
+
+    const tryGetPosition = () => {
+      attempt += 1;
+      const useHighAccuracy = attempt <= 2; // first two attempts try GPS, then fall back
+
+      navigator.geolocation.getCurrentPosition(
+        onSuccess,
+        (err) => {
+          if (err.code === 1 /* PERMISSION_DENIED */ || attempt >= maxAttempts) {
+            onFinalError(err);
+            return;
+          }
+          setTimeout(tryGetPosition, 1000 * attempt);
+        },
+        {
+          enableHighAccuracy: useHighAccuracy,
+          timeout: useHighAccuracy ? 12000 : 8000,
+          maximumAge: 0,
+        }
+      );
+    };
+
+    tryGetPosition();
   }, []);
 
   useEffect(() => {

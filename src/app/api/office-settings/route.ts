@@ -18,14 +18,24 @@ export async function PUT(req: NextRequest) {
 
   try {
     const body = await req.json();
+    const {
+      name, latitude, longitude, radiusMeters,
+      geofenceEnabled, allowedIps, ipCheckEnabled, timezone,
+    } = body;
+    const data: Record<string, unknown> = {
+      name, latitude, longitude, radiusMeters,
+      geofenceEnabled, allowedIps, ipCheckEnabled, timezone,
+    };
+    Object.keys(data).forEach((k) => data[k] === undefined && delete data[k]);
+
     const existing = await prisma.officeSettings.findFirst();
 
     const settings = existing
-      ? await prisma.officeSettings.update({ where: { id: existing.id }, data: body })
-      : await prisma.officeSettings.create({ data: { id: "default", ...body } });
+      ? await prisma.officeSettings.update({ where: { id: existing.id }, data })
+      : await prisma.officeSettings.create({ data: { id: "default", ...data } });
 
     await prisma.auditLog.create({
-      data: { userId: session.user.id, action: "GEOFENCE_CHANGE", description: "Office settings updated", metadata: body },
+      data: { userId: session.user.id, action: "GEOFENCE_CHANGE", description: "Office settings updated", metadata: data as object },
     });
 
     return NextResponse.json({ success: true, data: settings });

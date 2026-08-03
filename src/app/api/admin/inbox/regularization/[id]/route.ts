@@ -69,19 +69,20 @@ export async function POST(
                  isHalfDay: false,
                  hoursWorked: 0,
                  checkInAt: request.checkInAt,
-                 checkOutAt: request.checkOutAt
+                 checkOutAt: request.checkOutAt,
+                 overrideNote: `Regularized by admin. Reason: ${request.reason}`,
              }
          });
+      } else {
+        await prisma.attendanceRecord.update({
+          where: { id: record.id },
+          data: {
+            checkInAt: request.checkInAt ?? record.checkInAt,
+            checkOutAt: request.checkOutAt ?? record.checkOutAt,
+            overrideNote: `Regularized by admin. Reason: ${request.reason}`,
+          },
+        });
       }
-
-      await prisma.attendanceRecord.update({
-        where: { id: record.id },
-        data: {
-          checkInAt: request.checkInAt ?? record.checkInAt,
-          checkOutAt: request.checkOutAt ?? record.checkOutAt,
-          overrideNote: `Regularized by admin. Reason: ${request.reason}`,
-        },
-      });
 
       // Recalculate hours and status
       await recalculateAttendance(record.id);

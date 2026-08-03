@@ -79,6 +79,7 @@ export async function getEffectiveSchedule(userId: string) {
 
   // Inject dynamic lateAfter if not overridden
   if (schedule && !schedule.overrideLateAfter) {
+    schedule = { ...schedule }; // clone before mutating — don't touch Prisma's returned object
     const rules = await prisma.attendanceRules.findFirst();
     const graceMinutes = rules?.graceMinutes || 0;
     
@@ -615,10 +616,21 @@ export async function recalculateAttendance(recordId: string) {
   if (record.checkInAt && schedule) {
     const { status, isLate, lateMinutes } = determineAttendanceStatus(record.checkInAt, schedule, timezone, graceMinutes);
     if (newStatus !== "ON_LEAVE" && newStatus !== "HOLIDAY" && newStatus !== "WEEKEND") {
-       newStatus = status; 
+       newStatus = status;
     }
     newIsLate = isLate;
     newLateMinutes = lateMinutes;
+  } else if (
+    !record.checkInAt &&
+    record.checkOutAt &&
+    (newStatus === "ABSENT" || newStatus === "HALF_DAY")
+  ) {
+    // No check-in time to judge lateness against (e.g. only checkout was
+    // regularized), but a checkout time now exists — the day was worked,
+    // so don't leave it stuck as ABSENT/HALF_DAY from before regularization.
+    newStatus = "PRESENT";
+    newIsLate = false;
+    newLateMinutes = 0;
   }
 
   let newHoursWorked = record.hoursWorked;

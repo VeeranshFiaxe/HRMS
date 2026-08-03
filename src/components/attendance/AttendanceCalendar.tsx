@@ -70,6 +70,38 @@ export function AttendanceCalendar({
   const [showApplyDropdown, setShowApplyDropdown] = useState(false);
   const [prefillDate, setPrefillDate] = useState<string | undefined>();
 
+  // The parent only ever gives us one month of records (as server props).
+  // Cache fetched months by "YYYY-M" key so navigating with the prev/next
+  // buttons actually loads data instead of just redrawing an empty grid.
+  const initialKey = `${year}-${month}`;
+  const [recordsByMonth, setRecordsByMonth] = useState<Record<string, AttendanceRecord[]>>({
+    [initialKey]: records,
+  });
+  const [loadingMonth, setLoadingMonth] = useState(false);
+
+  const viewKey = `${viewDate.getFullYear()}-${viewDate.getMonth() + 1}`;
+  const visibleRecords = recordsByMonth[viewKey] ?? [];
+
+  useEffect(() => {
+    if (recordsByMonth[viewKey]) return; // already loaded (or is the initial month)
+
+    let cancelled = false;
+    setLoadingMonth(true);
+    fetch(`/api/attendance/history?year=${viewDate.getFullYear()}&month=${viewDate.getMonth() + 1}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (cancelled) return;
+        if (data.success) {
+          setRecordsByMonth((prev) => ({ ...prev, [viewKey]: data.data.records ?? [] }));
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingMonth(false);
+      });
+
+    return () => { cancelled = true; };
+  }, [viewKey, viewDate, recordsByMonth]);
+
   const monthStart = startOfMonth(viewDate);
   const monthEnd = endOfMonth(viewDate);
   const calStart = startOfWeek(monthStart, { weekStartsOn: 1 });
@@ -77,7 +109,7 @@ export function AttendanceCalendar({
   const days = eachDayOfInterval({ start: calStart, end: calEnd });
 
   const getRecord = useCallback((date: Date) =>
-    records.find((r) => isSameDay(parseISO(r.date), date)), [records]);
+    visibleRecords.find((r) => isSameDay(parseISO(r.date), date)), [visibleRecords]);
 
   const getEvents = useCallback((date: Date) =>
     events.filter((e) => isSameDay(parseISO(e.date), date)), [events]);
@@ -103,7 +135,10 @@ export function AttendanceCalendar({
     <div className="card p-5">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
-        <h3 className="font-semibold text-slate-900">{format(viewDate, "MMMM yyyy")}</h3>
+        <h3 className="font-semibold text-slate-900 flex items-center gap-2">
+          {format(viewDate, "MMMM yyyy")}
+          {loadingMonth && <span className="text-xs font-normal text-slate-400">Loading…</span>}
+        </h3>
         <div className="flex gap-1 items-center">
           {showLeaveApply && (
             <div className="relative mr-2">
